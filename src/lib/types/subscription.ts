@@ -1,22 +1,8 @@
-export type PlanTier = "FREE" | "STARTER" | "GROWTH" | "ENTERPRISE";
+import type { Plan } from "@/lib/types/plan";
+
+export type { Plan };
+
 export type BillingCycle = "MONTHLY" | "YEARLY";
-
-export interface Plan {
-  id: string;
-  tier: PlanTier;
-  name: string;
-  price: number;
-  billingCycle: BillingCycle;
-  features: string[];
-  limits: PlanLimits;
-}
-
-export interface PlanLimits {
-  monthlyParticipants: number;
-  activeBlockpicks: number;
-  teamMembers: number;
-  storageGb: number;
-}
 
 export interface Subscription {
   id: string;
