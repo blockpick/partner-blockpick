@@ -1,51 +1,41 @@
 "use client";
 
 import Link from "next/link";
-import { useSearchParams } from "next/navigation";
-import { Suspense } from "react";
+import { useSearchParams, useRouter } from "next/navigation";
+import { Suspense, useState } from "react";
 import { useMyBlockpicks } from "@/lib/hooks/use-my-blockpicks";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { BlockpicksTable } from "@/components/blockpicks/list/blockpicks-table";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Plus, ArrowRight } from "lucide-react";
+import { Plus } from "lucide-react";
 import type { BlockpickStatus } from "@/lib/types/blockpick";
 
-const STATUS_LABEL: Record<string, string> = {
-  ACTIVE: "진행중",
-  SCHEDULED: "예약됨",
-  DRAFT: "임시저장",
-  ENDED: "종료됨",
-  CANCELLED: "취소됨",
-};
-
-const STATUS_VARIANT: Record<string, "default" | "secondary" | "outline" | "destructive"> = {
-  ACTIVE: "default",
-  SCHEDULED: "secondary",
-  DRAFT: "outline",
-  ENDED: "secondary",
-  CANCELLED: "destructive",
-};
-
-const TAB_FILTERS = [
+const TAB_FILTERS: { label: string; value?: BlockpickStatus }[] = [
   { label: "전체", value: undefined },
   { label: "진행중", value: "ACTIVE" },
   { label: "예약됨", value: "SCHEDULED" },
   { label: "종료됨", value: "ENDED" },
   { label: "임시저장", value: "DRAFT" },
-] as const;
+];
 
 function BlockpickListContent() {
   const searchParams = useSearchParams();
+  const router = useRouter();
   const statusParam = searchParams.get("status") as BlockpickStatus | null;
+  const [search, setSearch] = useState("");
+  const [page, setPage] = useState(1);
+  const PAGE_SIZE = 10;
 
   const { data, isLoading } = useMyBlockpicks({
     status: statusParam ?? undefined,
-    pageSize: 20,
+    page,
+    pageSize: PAGE_SIZE,
+    search: search || undefined,
   });
 
   return (
     <div className="space-y-6">
+      {/* 헤더 */}
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold">블록픽</h1>
@@ -61,94 +51,63 @@ function BlockpickListContent() {
         </Link>
       </div>
 
-      {/* 상태 탭 필터 */}
-      <div className="flex gap-1 border-b pb-0">
+      {/* 상태 탭 */}
+      <div className="flex gap-0 border-b">
         {TAB_FILTERS.map((tab) => {
           const isActive =
             (tab.value === undefined && !statusParam) ||
             statusParam === tab.value;
-          const href = tab.value
-            ? `/blockpicks?status=${tab.value}`
-            : "/blockpicks";
           return (
-            <Link key={tab.label} href={href}>
-              <button
-                className={`px-3 py-2 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                  isActive
-                    ? "border-primary text-foreground"
-                    : "border-transparent text-muted-foreground hover:text-foreground"
-                }`}
-              >
-                {tab.label}
-              </button>
-            </Link>
+            <button
+              key={tab.label}
+              onClick={() => {
+                setPage(1);
+                if (tab.value) {
+                  router.push(`/blockpicks?status=${tab.value}`);
+                } else {
+                  router.push("/blockpicks");
+                }
+              }}
+              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
+                isActive
+                  ? "border-primary text-foreground"
+                  : "border-transparent text-muted-foreground hover:text-foreground"
+              }`}
+            >
+              {tab.label}
+            </button>
           );
         })}
       </div>
 
-      {/* 리스트 */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm font-medium text-muted-foreground">
-            {data?.total ?? 0}개의 블록픽
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-3">
-              {Array.from({ length: 5 }).map((_, i) => (
-                <Skeleton key={i} className="h-16 w-full" />
-              ))}
-            </div>
-          ) : !data?.items.length ? (
-            <div className="flex flex-col items-center justify-center py-16 text-center">
-              <p className="text-muted-foreground">블록픽이 없습니다</p>
-              <Link href="/blockpicks/new" className="mt-4">
-                <Button size="sm">첫 번째 블록픽 만들기</Button>
-              </Link>
-            </div>
-          ) : (
-            <div className="space-y-2">
-              {data.items.map((bp) => (
-                <Link
-                  key={bp.id}
-                  href={`/blockpicks/${bp.id}`}
-                  className="flex items-center justify-between rounded-lg border p-4 hover:bg-muted/50 transition-colors"
-                >
-                  <div className="space-y-1 min-w-0">
-                    <p className="text-sm font-medium truncate">{bp.title}</p>
-                    <p className="text-xs text-muted-foreground">
-                      참여 {bp.totalParticipants.toLocaleString()}명 · 방문{" "}
-                      {bp.totalVisits.toLocaleString()}회
-                      {bp.startAt && (
-                        <>
-                          {" "}
-                          · {new Date(bp.startAt).toLocaleDateString("ko-KR")}
-                          {bp.endAt &&
-                            ` ~ ${new Date(bp.endAt).toLocaleDateString("ko-KR")}`}
-                        </>
-                      )}
-                    </p>
-                  </div>
-                  <div className="flex items-center gap-3 shrink-0 ml-4">
-                    <Badge variant={STATUS_VARIANT[bp.status] ?? "outline"}>
-                      {STATUS_LABEL[bp.status] ?? bp.status}
-                    </Badge>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground" />
-                  </div>
-                </Link>
-              ))}
-            </div>
-          )}
-        </CardContent>
-      </Card>
+      {/* 테이블 */}
+      <BlockpicksTable
+        items={data?.items ?? []}
+        total={data?.total ?? 0}
+        isLoading={isLoading}
+        page={page}
+        pageSize={PAGE_SIZE}
+        onPageChange={setPage}
+        search={search}
+        onSearchChange={(v) => {
+          setSearch(v);
+          setPage(1);
+        }}
+      />
     </div>
   );
 }
 
 export default function BlockpicksPage() {
   return (
-    <Suspense fallback={<div className="space-y-4"><Skeleton className="h-10 w-48" /><Skeleton className="h-96 w-full" /></div>}>
+    <Suspense
+      fallback={
+        <div className="space-y-4">
+          <Skeleton className="h-10 w-48" />
+          <Skeleton className="h-96 w-full" />
+        </div>
+      }
+    >
       <BlockpickListContent />
     </Suspense>
   );
