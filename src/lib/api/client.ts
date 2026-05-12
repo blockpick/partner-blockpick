@@ -1,4 +1,4 @@
-const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:4000/graphql";
+const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8080/graphql";
 const TOKEN_KEY = process.env.NEXT_PUBLIC_TOKEN_KEY ?? "partner_access_token";
 const REFRESH_TOKEN_KEY =
   process.env.NEXT_PUBLIC_REFRESH_TOKEN_KEY ?? "partner_refresh_token";

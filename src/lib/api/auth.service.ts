@@ -13,24 +13,18 @@ interface AuthPayload {
 }
 
 const LOGIN_MUTATION = `
-  mutation PartnerLogin($email: String!, $password: String!) {
-    partnerLogin(email: $email, password: $password) {
+  mutation PartnerLogin($input: LoginRequest!) {
+    login(input: $input) {
+      success
+      code
+      message
       accessToken
       refreshToken
-      me {
+      user {
         id
         email
-        name
-        avatarUrl
-        partnerId
-        partnerRole
-        partner {
-          id
-          name
-          displayName
-          logoUrl
-          primaryColor
-        }
+        nickname
+        profileImageUrl
       }
     }
   }
@@ -38,53 +32,110 @@ const LOGIN_MUTATION = `
 
 const ME_QUERY = `
   query PartnerMe {
-    partnerMe {
-      id
-      email
-      name
-      avatarUrl
-      partnerId
-      partnerRole
+    me {
+      success
+      user {
+        id
+        email
+        nickname
+        profileImageUrl
+      }
+    }
+    myPartner {
+      success
       partner {
         id
         name
-        displayName
         logoUrl
-        primaryColor
-        officialUrl
+        websiteUrl
         description
+        createdAt
+        updatedAt
       }
     }
   }
 `;
 
-const LOGOUT_MUTATION = `
-  mutation PartnerLogout {
-    partnerLogout
-  }
-`;
-
 export const authService = {
   async login(input: LoginInput): Promise<AuthPayload> {
-    const data = await gqlRequest<{ partnerLogin: AuthPayload }>(
+    const data = await gqlRequest<{
+      login: {
+        success: boolean;
+        code: string;
+        message: string;
+        accessToken?: string | null;
+        refreshToken?: string | null;
+      };
+    }>(
       LOGIN_MUTATION,
-      { email: input.email, password: input.password },
+      { input },
     );
-    const payload = data.partnerLogin;
+    const payload = data.login;
+    if (!payload.success || !payload.accessToken || !payload.refreshToken) {
+      throw new Error(payload.message || "로그인에 실패했습니다.");
+    }
     setTokens(payload.accessToken, payload.refreshToken);
-    return payload;
+    const me = await authService.me();
+    return {
+      accessToken: payload.accessToken,
+      refreshToken: payload.refreshToken,
+      me,
+    };
   },
 
   async me(): Promise<Me> {
-    const data = await gqlRequest<{ partnerMe: Me }>(ME_QUERY);
-    return data.partnerMe;
+    const data = await gqlRequest<{
+      me: {
+        success: boolean;
+        user?: {
+          id: string;
+          email: string;
+          nickname?: string | null;
+          profileImageUrl?: string | null;
+        } | null;
+      };
+      myPartner: {
+        success: boolean;
+        partner?: {
+          id: string;
+          name: string;
+          logoUrl?: string | null;
+          websiteUrl?: string | null;
+          description?: string | null;
+          createdAt?: string | null;
+          updatedAt?: string | null;
+        } | null;
+      };
+    }>(ME_QUERY);
+
+    const user = data.me.user;
+    const partner = data.myPartner.partner;
+    if (!user || !partner) {
+      throw new Error("파트너 정보를 불러오지 못했습니다.");
+    }
+
+    return {
+      id: user.id,
+      email: user.email,
+      name: user.nickname || user.email.split("@")[0],
+      avatarUrl: user.profileImageUrl || undefined,
+      partnerId: partner.id,
+      partnerRole: "OWNER",
+      partner: {
+        id: partner.id,
+        name: partner.name,
+        displayName: partner.name,
+        logoUrl: partner.logoUrl || undefined,
+        primaryColor: undefined,
+        officialUrl: partner.websiteUrl || undefined,
+        description: partner.description || undefined,
+        createdAt: partner.createdAt || new Date().toISOString(),
+        updatedAt: partner.updatedAt || new Date().toISOString(),
+      },
+    };
   },
 
   async logout(): Promise<void> {
-    try {
-      await gqlRequest(LOGOUT_MUTATION);
-    } finally {
-      clearTokens();
-    }
+    clearTokens();
   },
 };
