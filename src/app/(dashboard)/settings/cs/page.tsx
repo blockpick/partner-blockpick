@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Headphones, AlertCircle } from "lucide-react";
+import { PageHeader } from "@/components/dashboard/page-header";
 import {
   Card,
   CardContent,
@@ -41,13 +42,11 @@ export default function SettingsCsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold">고객 지원</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          앱 내 고객센터 정보와 자동 응답 메시지를 설정합니다.
-        </p>
-      </div>
+    <div className="max-w-2xl space-y-6">
+      <PageHeader
+        title="CS 정보"
+        description="앱 내 고객센터 정보와 자동 응답 메시지를 설정합니다."
+      />
 
       <Card>
         <CardHeader>

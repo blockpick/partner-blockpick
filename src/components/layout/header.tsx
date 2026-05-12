@@ -29,8 +29,7 @@ export function Header() {
     : "BP";
 
   return (
-    <header className="flex h-16 items-center gap-4 border-b bg-background px-4 md:px-6 shrink-0">
-      {/* 모바일 사이드바 토글 */}
+    <header className="sticky top-0 z-30 flex h-14 shrink-0 items-center gap-3 border-b border-border bg-background/95 px-4 backdrop-blur supports-[backdrop-filter]:bg-background/80 lg:px-6">
       <Sheet>
         <SheetTrigger asChild>
           <Button variant="ghost" size="icon" className="md:hidden">
@@ -38,56 +37,55 @@ export function Header() {
             <span className="sr-only">메뉴 열기</span>
           </Button>
         </SheetTrigger>
-        <SheetContent side="left" className="p-0 w-64">
+        <SheetContent side="left" className="w-60 p-0">
           <Sidebar inSheet />
         </SheetContent>
       </Sheet>
 
-      {/* 테넌트(파트너) 브랜드명 */}
-      <div className="hidden md:block">
-        <span className="text-sm font-semibold text-muted-foreground">
-          {me?.partner?.displayName ?? me?.partner?.name ?? "파트너 대시보드"}
-        </span>
+      <div className="relative max-w-md flex-1">
+        <Search className="pointer-events-none absolute left-2.5 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
+        <Input
+          type="search"
+          placeholder="블록픽, 참여자 검색"
+          className="h-9 pl-8"
+        />
       </div>
 
-      {/* 검색 */}
-      <div className="flex-1 max-w-md">
-        <div className="relative">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="블록픽, 참여자 검색..."
-            className="pl-8 bg-muted/40 border-0 focus-visible:ring-1"
-          />
-        </div>
-      </div>
-
-      <div className="ml-auto flex items-center gap-2">
-        {/* 도움말 */}
+      <div className="ml-auto flex items-center gap-1">
         <Button variant="ghost" size="icon" aria-label="도움말">
-          <HelpCircle className="h-5 w-5 text-muted-foreground" />
+          <HelpCircle className="h-4 w-4 text-muted-foreground" />
         </Button>
 
-        {/* 알림 */}
-        <Button variant="ghost" size="icon" aria-label="알림" className="relative">
-          <Bell className="h-5 w-5 text-muted-foreground" />
-          {/* 읽지 않은 알림 뱃지 — 실제 카운트는 추후 연동 */}
-          <span className="absolute right-2 top-2 h-2 w-2 rounded-full bg-destructive" />
+        <Button
+          variant="ghost"
+          size="icon"
+          aria-label="알림"
+          className="relative"
+        >
+          <Bell className="h-4 w-4 text-muted-foreground" />
+          <span className="absolute right-2 top-2 h-1.5 w-1.5 rounded-full bg-destructive" />
         </Button>
 
-        {/* 프로필 드롭다운 */}
         <DropdownMenu>
           <DropdownMenuTrigger asChild>
-            <Button variant="ghost" className="relative h-9 w-9 rounded-full">
-              <Avatar className="h-9 w-9">
+            <button
+              type="button"
+              className="ml-1 flex items-center gap-2 rounded-md px-1.5 py-1 transition-colors hover:bg-muted/60 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring"
+            >
+              <Avatar className="h-7 w-7">
                 <AvatarImage src={me?.avatarUrl} alt={me?.name ?? "프로필"} />
-                <AvatarFallback className="text-xs">{initials}</AvatarFallback>
+                <AvatarFallback className="bg-muted text-xs">
+                  {initials}
+                </AvatarFallback>
               </Avatar>
-            </Button>
+              <span className="hidden text-sm font-medium md:inline">
+                {me?.name ?? "사용자"}
+              </span>
+            </button>
           </DropdownMenuTrigger>
           <DropdownMenuContent className="w-56" align="end" forceMount>
             <DropdownMenuLabel className="font-normal">
-              <div className="flex flex-col space-y-1">
+              <div className="flex flex-col gap-1">
                 <p className="text-sm font-medium leading-none">
                   {me?.name ?? "사용자"}
                 </p>

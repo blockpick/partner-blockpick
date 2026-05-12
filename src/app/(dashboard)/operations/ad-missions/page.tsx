@@ -1,11 +1,10 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import {
-  useAdMissionSetting,
-  useUpdateAdMissionSetting,
-} from "@/lib/hooks/use-operations";
+import { useEffect, useState } from "react";
+import { Plus, Trash2 } from "lucide-react";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { BlockpickSelect } from "@/components/operations/blockpick-select";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -13,15 +12,22 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Skeleton } from "@/components/ui/skeleton";
-import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
-import { Badge } from "@/components/ui/badge";
-import { Save } from "lucide-react";
-import type { AdMissionSetting, MissionType } from "@/lib/types/operations";
+import {
+  useAdMissionSetting,
+  useUpdateAdMissionSetting,
+} from "@/lib/hooks/use-operations";
+import type { MissionConfig, MissionType } from "@/lib/types/operations";
 
 const MISSION_TYPE_LABEL: Record<MissionType, string> = {
   SIGNUP: "회원가입",
@@ -31,261 +37,267 @@ const MISSION_TYPE_LABEL: Record<MissionType, string> = {
   QR_VERIFY: "QR 인증",
 };
 
-export default function OperationsAdMissionsPage() {
-  const [blockpickId, setBlockpickId] = useState("mock-1");
-  const { data, isLoading } = useAdMissionSetting(blockpickId);
-  const updateSetting = useUpdateAdMissionSetting();
+type MissionDraft = Omit<MissionConfig, "id"> & { _key: string };
 
-  // 로컬 편집 상태
-  const [form, setForm] = useState<AdMissionSetting | null>(null);
+export default function AdMissionsPage() {
+  const [blockpickId, setBlockpickId] = useState("");
+  const { data, isLoading } = useAdMissionSetting(blockpickId);
+  const update = useUpdateAdMissionSetting();
+
+  const [adEnabled, setAdEnabled] = useState(false);
+  const [adDailyLimit, setAdDailyLimit] = useState(0);
+  const [adRewardAmount, setAdRewardAmount] = useState(0);
+  const [missionEnabled, setMissionEnabled] = useState(false);
+  const [missions, setMissions] = useState<MissionDraft[]>([]);
 
   useEffect(() => {
-    if (data) setForm(data);
+    if (!data) return;
+    setAdEnabled(data.adEnabled);
+    setAdDailyLimit(data.adDailyLimit);
+    setAdRewardAmount(data.adRewardAmount);
+    setMissionEnabled(data.missionEnabled);
+    setMissions(
+      (data.missions ?? []).map((m) => ({
+        _key: m.id,
+        type: m.type,
+        label: m.label,
+        rewardAmount: m.rewardAmount,
+        enabled: m.enabled,
+        targetUrl: m.targetUrl,
+      }))
+    );
   }, [data]);
 
-  function handleSave() {
-    if (!form) return;
-    updateSetting.mutate({
+  const addMission = () => {
+    setMissions((prev) => [
+      ...prev,
+      {
+        _key: `new-${Date.now()}`,
+        type: "SIGNUP",
+        label: "",
+        rewardAmount: 1,
+        enabled: true,
+        targetUrl: "",
+      },
+    ]);
+  };
+
+  const updateMission = (key: string, patch: Partial<MissionDraft>) => {
+    setMissions((prev) =>
+      prev.map((m) => (m._key === key ? { ...m, ...patch } : m))
+    );
+  };
+
+  const removeMission = (key: string) => {
+    setMissions((prev) => prev.filter((m) => m._key !== key));
+  };
+
+  async function handleSave() {
+    if (!blockpickId) return;
+    await update.mutateAsync({
       blockpickId,
       input: {
-        adEnabled: form.adEnabled,
-        adDailyLimit: form.adDailyLimit,
-        adRewardAmount: form.adRewardAmount,
-        missionEnabled: form.missionEnabled,
-        missions: form.missions.map(({ id: _id, ...rest }) => rest),
+        adEnabled,
+        adDailyLimit,
+        adRewardAmount,
+        missionEnabled,
+        missions: missions.map(({ _key, ...rest }) => rest),
       },
     });
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h1 className="text-2xl font-bold">광고/미션 설정</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            블록픽별 광고 시청 및 미션 보상 설정을 관리합니다
-          </p>
-        </div>
-        <Button
-          onClick={handleSave}
-          disabled={!form || updateSetting.isPending}
-          className="gap-1.5"
-        >
-          <Save className="h-4 w-4" />
-          {updateSetting.isPending ? "저장 중..." : "저장"}
-        </Button>
-      </div>
+      <PageHeader
+        title="광고/미션 설정"
+        description="블록픽별 추가 참여 정책을 설정합니다."
+        actions={
+          blockpickId && (
+            <Button onClick={handleSave} disabled={update.isPending}>
+              {update.isPending ? "저장 중..." : "설정 저장"}
+            </Button>
+          )
+        }
+      />
 
-      {/* 블록픽 선택 */}
-      <div>
-        <BlockpickSelect
-          value={blockpickId}
-          onChange={(v) => setBlockpickId(v)}
-          includeAll={false}
-        />
-      </div>
+      <Card>
+        <CardContent className="pt-4">
+          <div className="space-y-1.5">
+            <Label>블록픽 선택</Label>
+            <BlockpickSelect
+              value={blockpickId}
+              onChange={setBlockpickId}
+              includeAll={false}
+            />
+          </div>
+        </CardContent>
+      </Card>
 
-      {isLoading || !form ? (
+      {!blockpickId ? (
         <Card>
-          <CardContent className="pt-6 space-y-4">
-            {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-10 w-full" />
-            ))}
+          <CardContent className="px-4 py-10 text-center text-sm text-muted-foreground">
+            설정할 블록픽을 먼저 선택하세요.
           </CardContent>
         </Card>
+      ) : isLoading ? (
+        <div className="space-y-4">
+          <Skeleton className="h-40 w-full" />
+          <Skeleton className="h-40 w-full" />
+        </div>
       ) : (
         <>
-          {/* 광고 설정 */}
           <Card>
             <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">광고 시청 설정</CardTitle>
-                  <CardDescription>
-                    광고 시청으로 추가 참여권을 지급합니다
-                  </CardDescription>
-                </div>
-                <Switch
-                  checked={form.adEnabled}
-                  onCheckedChange={(v) =>
-                    setForm((prev) => prev && { ...prev, adEnabled: v })
-                  }
-                />
-              </div>
+              <CardDescription>광고 보상</CardDescription>
+              <CardTitle>리워드 광고 시청</CardTitle>
             </CardHeader>
-            {form.adEnabled && (
-              <CardContent className="space-y-4">
-                <div className="grid gap-4 sm:grid-cols-2">
-                  <div className="space-y-2">
-                    <Label>일일 광고 시청 한도 (회/인)</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      max={10}
-                      value={form.adDailyLimit}
-                      onChange={(e) =>
-                        setForm(
-                          (prev) =>
-                            prev && {
-                              ...prev,
-                              adDailyLimit: Number(e.target.value),
-                            },
-                        )
-                      }
-                    />
-                  </div>
-                  <div className="space-y-2">
-                    <Label>광고 시청 보상 (참여권 개수)</Label>
-                    <Input
-                      type="number"
-                      min={1}
-                      value={form.adRewardAmount}
-                      onChange={(e) =>
-                        setForm(
-                          (prev) =>
-                            prev && {
-                              ...prev,
-                              adRewardAmount: Number(e.target.value),
-                            },
-                        )
-                      }
-                    />
-                  </div>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4 rounded-md border border-border p-3">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">광고 시청 추가 참여</p>
+                  <p className="text-xs text-muted-foreground">
+                    사용자가 광고를 끝까지 시청하면 추가 참여권을 지급합니다.
+                  </p>
                 </div>
-              </CardContent>
-            )}
+                <Switch checked={adEnabled} onCheckedChange={setAdEnabled} />
+              </div>
+
+              <div className="grid gap-4 sm:grid-cols-2">
+                <div className="space-y-1.5">
+                  <Label htmlFor="ad-daily-limit">일일 시청 한도</Label>
+                  <Input
+                    id="ad-daily-limit"
+                    type="number"
+                    min={0}
+                    value={adDailyLimit}
+                    onChange={(e) => setAdDailyLimit(Number(e.target.value))}
+                    disabled={!adEnabled}
+                  />
+                </div>
+                <div className="space-y-1.5">
+                  <Label htmlFor="ad-reward-amount">시청당 보상 수량</Label>
+                  <Input
+                    id="ad-reward-amount"
+                    type="number"
+                    min={0}
+                    value={adRewardAmount}
+                    onChange={(e) => setAdRewardAmount(Number(e.target.value))}
+                    disabled={!adEnabled}
+                  />
+                </div>
+              </div>
+            </CardContent>
           </Card>
 
-          {/* 미션 설정 */}
           <Card>
-            <CardHeader>
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="text-base">미션 설정</CardTitle>
-                  <CardDescription>
-                    미션 완료 시 추가 참여권을 지급합니다
-                  </CardDescription>
+            <CardHeader className="flex flex-row items-start justify-between">
+              <div className="space-y-1">
+                <CardDescription>미션</CardDescription>
+                <CardTitle>참여 미션</CardTitle>
+              </div>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={addMission}
+                disabled={!missionEnabled}
+                className="gap-1.5"
+              >
+                <Plus className="h-4 w-4" />새 미션
+              </Button>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between gap-4 rounded-md border border-border p-3">
+                <div className="space-y-0.5">
+                  <p className="text-sm font-medium">미션 시스템 사용</p>
+                  <p className="text-xs text-muted-foreground">
+                    사용자가 지정된 미션을 완료하면 추가 참여권을 지급합니다.
+                  </p>
                 </div>
                 <Switch
-                  checked={form.missionEnabled}
-                  onCheckedChange={(v) =>
-                    setForm((prev) => prev && { ...prev, missionEnabled: v })
-                  }
+                  checked={missionEnabled}
+                  onCheckedChange={setMissionEnabled}
                 />
               </div>
-            </CardHeader>
-            {form.missionEnabled && (
-              <CardContent className="space-y-4">
-                {form.missions.map((mission, idx) => (
-                  <div key={mission.id}>
-                    {idx > 0 && <Separator className="mb-4" />}
-                    <div className="flex items-start gap-4">
-                      <Switch
-                        checked={mission.enabled}
-                        onCheckedChange={(v) =>
-                          setForm(
-                            (prev) =>
-                              prev && {
-                                ...prev,
-                                missions: prev.missions.map((m, i) =>
-                                  i === idx ? { ...m, enabled: v } : m,
-                                ),
-                              },
-                          )
-                        }
-                      />
-                      <div className="flex-1 space-y-3">
-                        <div className="flex items-center gap-2">
-                          <span className="text-sm font-medium">
-                            {MISSION_TYPE_LABEL[mission.type]}
-                          </span>
-                          <Badge variant="outline" className="text-xs">
-                            {mission.type}
-                          </Badge>
+
+              {missionEnabled && (
+                <div className="space-y-2">
+                  {!missions.length ? (
+                    <p className="rounded-md border border-dashed border-border px-4 py-6 text-center text-sm text-muted-foreground">
+                      등록된 미션이 없습니다. 새 미션을 추가하세요.
+                    </p>
+                  ) : (
+                    missions.map((mission) => (
+                      <div
+                        key={mission._key}
+                        className="grid gap-3 rounded-md border border-border p-3 md:grid-cols-[160px_1fr_140px_auto_auto]"
+                      >
+                        <Select
+                          value={mission.type}
+                          onValueChange={(v) =>
+                            updateMission(mission._key, {
+                              type: v as MissionType,
+                            })
+                          }
+                        >
+                          <SelectTrigger className="h-9">
+                            <SelectValue />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {Object.entries(MISSION_TYPE_LABEL).map(
+                              ([value, label]) => (
+                                <SelectItem key={value} value={value}>
+                                  {label}
+                                </SelectItem>
+                              )
+                            )}
+                          </SelectContent>
+                        </Select>
+
+                        <Input
+                          value={mission.label}
+                          placeholder="미션 라벨 (예: 인스타그램 팔로우)"
+                          onChange={(e) =>
+                            updateMission(mission._key, {
+                              label: e.target.value,
+                            })
+                          }
+                        />
+
+                        <Input
+                          type="number"
+                          min={0}
+                          value={mission.rewardAmount}
+                          placeholder="보상"
+                          onChange={(e) =>
+                            updateMission(mission._key, {
+                              rewardAmount: Number(e.target.value),
+                            })
+                          }
+                        />
+
+                        <div className="flex items-center justify-center">
+                          <Switch
+                            checked={mission.enabled}
+                            onCheckedChange={(checked) =>
+                              updateMission(mission._key, { enabled: checked })
+                            }
+                          />
                         </div>
-                        <div className="grid gap-3 sm:grid-cols-2">
-                          <div className="space-y-1">
-                            <Label className="text-xs">미션 라벨</Label>
-                            <Input
-                              value={mission.label}
-                              onChange={(e) =>
-                                setForm(
-                                  (prev) =>
-                                    prev && {
-                                      ...prev,
-                                      missions: prev.missions.map((m, i) =>
-                                        i === idx
-                                          ? { ...m, label: e.target.value }
-                                          : m,
-                                      ),
-                                    },
-                                )
-                              }
-                              disabled={!mission.enabled}
-                            />
-                          </div>
-                          <div className="space-y-1">
-                            <Label className="text-xs">
-                              보상 단가 (참여권 개수)
-                            </Label>
-                            <Input
-                              type="number"
-                              min={1}
-                              value={mission.rewardAmount}
-                              onChange={(e) =>
-                                setForm(
-                                  (prev) =>
-                                    prev && {
-                                      ...prev,
-                                      missions: prev.missions.map((m, i) =>
-                                        i === idx
-                                          ? {
-                                              ...m,
-                                              rewardAmount: Number(
-                                                e.target.value,
-                                              ),
-                                            }
-                                          : m,
-                                      ),
-                                    },
-                                )
-                              }
-                              disabled={!mission.enabled}
-                            />
-                          </div>
-                          {mission.targetUrl !== undefined && (
-                            <div className="space-y-1 sm:col-span-2">
-                              <Label className="text-xs">목표 URL</Label>
-                              <Input
-                                value={mission.targetUrl ?? ""}
-                                onChange={(e) =>
-                                  setForm(
-                                    (prev) =>
-                                      prev && {
-                                        ...prev,
-                                        missions: prev.missions.map((m, i) =>
-                                          i === idx
-                                            ? {
-                                                ...m,
-                                                targetUrl: e.target.value,
-                                              }
-                                            : m,
-                                        ),
-                                      },
-                                  )
-                                }
-                                disabled={!mission.enabled}
-                                placeholder="https://"
-                              />
-                            </div>
-                          )}
-                        </div>
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => removeMission(mission._key)}
+                          className="h-9 w-9 text-muted-foreground hover:text-destructive"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
                       </div>
-                    </div>
-                  </div>
-                ))}
-              </CardContent>
-            )}
+                    ))
+                  )}
+                </div>
+              )}
+            </CardContent>
           </Card>
         </>
       )}

@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { Download, Filter } from "lucide-react";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -77,18 +78,16 @@ export default function TeamActivityPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">팀 활동 로그</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            팀원들의 모든 활동 내역을 확인합니다.
-          </p>
-        </div>
-        <Button variant="outline" onClick={handleExportCsv}>
-          <Download className="mr-2 h-4 w-4" />
-          CSV 내보내기
-        </Button>
-      </div>
+      <PageHeader
+        title="활동 로그"
+        description="팀원들의 운영 활동과 설정 변경 이력을 확인합니다."
+        actions={
+          <Button variant="outline" onClick={handleExportCsv} className="gap-1.5">
+            <Download className="h-4 w-4" />
+            CSV 내보내기
+          </Button>
+        }
+      />
 
       {/* 필터 영역 */}
       <div className="rounded-lg border bg-card p-4">

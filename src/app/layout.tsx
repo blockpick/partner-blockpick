@@ -1,21 +1,23 @@
 import type { Metadata } from "next";
-import { Geist, Geist_Mono } from "next/font/google";
+import { Inter, Noto_Sans_KR } from "next/font/google";
 import { Providers } from "@/components/providers";
 import "./globals.css";
 
-const geistSans = Geist({
-  variable: "--font-geist-sans",
+const inter = Inter({
+  variable: "--font-inter",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
-const geistMono = Geist_Mono({
-  variable: "--font-geist-mono",
+const notoSansKr = Noto_Sans_KR({
+  variable: "--font-noto-sans-kr",
   subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
 });
 
 export const metadata: Metadata = {
-  title: "BlockPick 파트너 대시보드",
-  description: "블록픽 파트너 캠페인 관리 대시보드",
+  title: "BlockPick Partner",
+  description: "블록픽 파트너 캠페인 운영과 분석 대시보드",
 };
 
 export default function RootLayout({
@@ -26,7 +28,11 @@ export default function RootLayout({
   return (
     <html lang="ko" suppressHydrationWarning>
       <body
-        className={`${geistSans.variable} ${geistMono.variable} antialiased`}
+        className={`${inter.variable} ${notoSansKr.variable} font-sans antialiased`}
+        style={{
+          fontFamily:
+            "var(--font-inter), var(--font-noto-sans-kr), -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif",
+        }}
         suppressHydrationWarning
       >
         <Providers>{children}</Providers>

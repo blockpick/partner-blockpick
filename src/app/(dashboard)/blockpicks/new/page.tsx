@@ -1,9 +1,7 @@
 "use client";
 
-import Link from "next/link";
-import { Button } from "@/components/ui/button";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft } from "lucide-react";
 import { WizardStepper } from "@/components/blockpicks/wizard/wizard-stepper";
 import { Step1Basic } from "@/components/blockpicks/wizard/step1-basic";
 import { Step2Game } from "@/components/blockpicks/wizard/step2-game";
@@ -11,89 +9,78 @@ import { Step3Reward } from "@/components/blockpicks/wizard/step3-reward";
 import { Step4Operation } from "@/components/blockpicks/wizard/step4-operation";
 import { Step5Preview } from "@/components/blockpicks/wizard/step5-preview";
 import { Step6Publish } from "@/components/blockpicks/wizard/step6-publish";
-import { useWizard, type WizardStep } from "@/components/blockpicks/wizard/use-wizard";
+import { useWizard } from "@/components/blockpicks/wizard/use-wizard";
 
 export default function NewBlockpickPage() {
-  const { step, form, updateForm, nextStep, prevStep, goToStep, clearDraft, toInput } =
-    useWizard();
+  const wizard = useWizard();
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
-      {/* 헤더 */}
-      <div className="flex items-center gap-3">
-        <Link href="/blockpicks">
-          <Button variant="ghost" size="icon" className="h-8 w-8">
-            <ArrowLeft className="h-4 w-4" />
-          </Button>
-        </Link>
-        <div>
-          <h1 className="text-2xl font-bold">새 블록픽 만들기</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            새로운 캠페인을 설정하고 발행하세요
-          </p>
-        </div>
-      </div>
+    <div className="space-y-6">
+      <PageHeader
+        title="새 블록픽 만들기"
+        description="위저드를 따라 캠페인 설정을 완료하고 발행하세요."
+      />
 
-      {/* 스텝퍼 */}
-      <div className="overflow-x-auto pb-1">
-        <WizardStepper currentStep={step} onStepClick={goToStep} />
-      </div>
-
-      {/* 스텝 콘텐츠 */}
       <Card>
         <CardContent className="p-6">
-          {step === 1 && (
-            <Step1Basic form={form} onChange={updateForm} onNext={nextStep} />
+          <WizardStepper
+            currentStep={wizard.step}
+            onStepClick={wizard.goToStep}
+          />
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardContent className="p-6">
+          {wizard.step === 1 && (
+            <Step1Basic
+              form={wizard.form}
+              onChange={wizard.updateForm}
+              onNext={wizard.nextStep}
+            />
           )}
-          {step === 2 && (
+          {wizard.step === 2 && (
             <Step2Game
-              form={form}
-              onChange={updateForm}
-              onNext={nextStep}
-              onPrev={prevStep}
+              form={wizard.form}
+              onChange={wizard.updateForm}
+              onPrev={wizard.prevStep}
+              onNext={wizard.nextStep}
             />
           )}
-          {step === 3 && (
+          {wizard.step === 3 && (
             <Step3Reward
-              form={form}
-              onChange={updateForm}
-              onNext={nextStep}
-              onPrev={prevStep}
+              form={wizard.form}
+              onChange={wizard.updateForm}
+              onPrev={wizard.prevStep}
+              onNext={wizard.nextStep}
             />
           )}
-          {step === 4 && (
+          {wizard.step === 4 && (
             <Step4Operation
-              form={form}
-              onChange={updateForm}
-              onNext={nextStep}
-              onPrev={prevStep}
+              form={wizard.form}
+              onChange={wizard.updateForm}
+              onPrev={wizard.prevStep}
+              onNext={wizard.nextStep}
             />
           )}
-          {step === 5 && (
+          {wizard.step === 5 && (
             <Step5Preview
-              form={form}
-              toInput={toInput}
-              onNext={nextStep}
-              onPrev={prevStep}
+              form={wizard.form}
+              toInput={wizard.toInput}
+              onPrev={wizard.prevStep}
+              onNext={wizard.nextStep}
             />
           )}
-          {step === 6 && (
+          {wizard.step === 6 && (
             <Step6Publish
-              form={form}
-              toInput={toInput}
-              onPrev={prevStep}
-              onClearDraft={clearDraft}
+              form={wizard.form}
+              toInput={wizard.toInput}
+              onPrev={wizard.prevStep}
+              onClearDraft={wizard.clearDraft}
             />
           )}
         </CardContent>
       </Card>
-
-      {/* 임시저장 힌트 */}
-      {step < 6 && (
-        <p className="text-xs text-muted-foreground text-center">
-          입력 내용은 브라우저에 자동 저장됩니다. 나중에 다시 방문해도 이어서 작성할 수 있습니다.
-        </p>
-      )}
     </div>
   );
 }

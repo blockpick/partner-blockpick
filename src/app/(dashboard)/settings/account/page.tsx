@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { useForm } from "react-hook-form";
+import { PageHeader } from "@/components/dashboard/page-header";
 import {
   User,
   Lock,
@@ -98,13 +99,11 @@ export default function SettingsAccountPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold">계정 설정</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          내 프로필, 보안 설정, 세션을 관리합니다.
-        </p>
-      </div>
+    <div className="max-w-2xl space-y-6">
+      <PageHeader
+        title="계정 설정"
+        description="내 프로필, 보안 설정, 세션을 관리합니다."
+      />
 
       {/* 프로필 */}
       <Card>

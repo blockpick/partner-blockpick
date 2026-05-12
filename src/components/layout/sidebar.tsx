@@ -4,7 +4,6 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useState, useEffect } from "react";
 import { cn } from "@/lib/utils";
-import { Button } from "@/components/ui/button";
 import {
   Home,
   Layers,
@@ -14,12 +13,10 @@ import {
   CreditCard,
   Users,
   Settings,
-  ChevronLeft,
-  ChevronRight,
   ChevronDown,
   LogOut,
-  Plus,
 } from "lucide-react";
+import { WorkspaceCard } from "@/components/layout/workspace-card";
 
 interface NavItem {
   name: string;
@@ -40,10 +37,6 @@ const navigation: NavItem[] = [
     children: [
       { name: "전체 블록픽", href: "/blockpicks" },
       { name: "새 블록픽 만들기", href: "/blockpicks/new" },
-      { name: "진행중", href: "/blockpicks?status=ACTIVE" },
-      { name: "예약됨", href: "/blockpicks?status=SCHEDULED" },
-      { name: "종료됨", href: "/blockpicks?status=ENDED" },
-      { name: "임시저장", href: "/blockpicks?status=DRAFT" },
     ],
   },
   {
@@ -117,21 +110,14 @@ interface SidebarProps {
 export function Sidebar({ inSheet = false, onClose }: SidebarProps) {
   const pathname = usePathname();
 
-  const [collapsed, setCollapsed] = useState<boolean>(() => {
-    if (typeof window !== "undefined") {
-      return localStorage.getItem("partner-sidebar-collapsed") === "true";
-    }
-    return false;
-  });
-
-  // 각 그룹의 펼침/접힘 상태
   const [openGroups, setOpenGroups] = useState<Record<string, boolean>>(() => {
-    // 현재 경로와 매칭되는 그룹을 기본 오픈
     const initial: Record<string, boolean> = {};
     navigation.forEach((item) => {
       if (item.children) {
-        const isActive = item.children.some((child) =>
-          pathname === child.href || pathname.startsWith(child.href.split("?")[0] + "/")
+        const isActive = item.children.some(
+          (child) =>
+            pathname === child.href ||
+            pathname.startsWith(child.href.split("?")[0] + "/")
         );
         initial[item.name] = isActive;
       }
@@ -139,13 +125,23 @@ export function Sidebar({ inSheet = false, onClose }: SidebarProps) {
     return initial;
   });
 
+  // 경로 변경 시 그룹 자동 오픈 동기화
   useEffect(() => {
-    if (!inSheet) {
-      localStorage.setItem("partner-sidebar-collapsed", String(collapsed));
-    }
-  }, [collapsed, inSheet]);
-
-  const isCollapsed = inSheet ? false : collapsed;
+    setOpenGroups((prev) => {
+      const next = { ...prev };
+      navigation.forEach((item) => {
+        if (item.children) {
+          const isActive = item.children.some(
+            (child) =>
+              pathname === child.href ||
+              pathname.startsWith(child.href.split("?")[0] + "/")
+          );
+          if (isActive) next[item.name] = true;
+        }
+      });
+      return next;
+    });
+  }, [pathname]);
 
   const toggleGroup = (name: string) => {
     setOpenGroups((prev) => ({ ...prev, [name]: !prev[name] }));
@@ -159,198 +155,120 @@ export function Sidebar({ inSheet = false, onClose }: SidebarProps) {
     );
 
   return (
-    <div
-      className={cn(
-        "flex h-full flex-col border-r bg-background transition-all duration-300",
-        isCollapsed ? "w-16" : "w-64"
-      )}
-    >
-      {/* 로고 + 토글 */}
-      <div
-        className={cn(
-          "flex h-16 items-center border-b shrink-0",
-          isCollapsed ? "justify-center px-0" : "justify-between px-4"
-        )}
-      >
-        <Link
-          href="/"
-          className="flex items-center space-x-2"
-          onClick={onClose}
-        >
-          <div className="h-8 w-8 shrink-0 rounded-lg bg-primary flex items-center justify-center">
-            <span className="text-primary-foreground text-xs font-bold">BP</span>
-          </div>
-          {!isCollapsed && (
-            <span className="text-base font-bold whitespace-nowrap">
-              파트너 대시보드
-            </span>
-          )}
-        </Link>
-
-        {!inSheet && (
-          <Button
-            variant="ghost"
-            size="icon"
-            className="h-8 w-8 shrink-0"
-            onClick={() => setCollapsed((prev) => !prev)}
-            aria-label={isCollapsed ? "사이드바 펼치기" : "사이드바 접기"}
-          >
-            {isCollapsed ? (
-              <ChevronRight className="h-4 w-4" />
-            ) : (
-              <ChevronLeft className="h-4 w-4" />
-            )}
-          </Button>
-        )}
+    <div className="flex h-full w-full flex-col">
+      <div className="border-b border-border p-2">
+        <WorkspaceCard onClick={onClose} />
       </div>
 
-      {/* 새 블록픽 빠른 버튼 */}
-      {!isCollapsed && (
-        <div className="px-3 py-3 border-b">
-          <Link href="/blockpicks/new" onClick={onClose}>
-            <Button size="sm" className="w-full gap-1.5">
-              <Plus className="h-4 w-4" />
-              새 블록픽 만들기
-            </Button>
-          </Link>
-        </div>
-      )}
-
-      {/* 네비게이션 */}
-      <nav className="flex-1 overflow-y-auto py-3 px-2 space-y-0.5">
-        {navigation.map((item) => {
-          // 단일 링크 메뉴 (홈)
-          if (!item.children) {
-            const isActive = pathname === item.href;
-            return (
-              <div key={item.name} className="relative group">
-                <Link
-                  href={item.href!}
-                  onClick={onClose}
-                  className={cn(
-                    "flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    isCollapsed ? "justify-center" : "space-x-3",
-                    isActive
-                      ? "bg-primary text-primary-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <item.icon className="h-4 w-4 shrink-0" />
-                  {!isCollapsed && <span>{item.name}</span>}
-                </Link>
-                {isCollapsed && (
-                  <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 rounded-md bg-foreground px-2 py-1 text-xs text-background shadow-md whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                    {item.name}
-                  </div>
-                )}
-              </div>
-            );
-          }
-
-          // 그룹 메뉴
-          const groupActive = isChildActive(item.children);
-          const isOpen = openGroups[item.name] ?? groupActive;
-
-          return (
-            <div key={item.name}>
-              {/* 그룹 헤더 */}
-              <div className="relative group">
-                <button
-                  onClick={() => !isCollapsed && toggleGroup(item.name)}
-                  className={cn(
-                    "w-full flex items-center rounded-lg px-3 py-2 text-sm font-medium transition-colors",
-                    isCollapsed ? "justify-center" : "justify-between",
-                    groupActive
-                      ? "text-foreground"
-                      : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                  )}
-                >
-                  <span
+      <nav className="flex-1 overflow-y-auto px-2 py-3">
+        <ul className="space-y-0.5">
+          {navigation.map((item) => {
+            if (!item.children) {
+              const isActive = pathname === item.href;
+              return (
+                <li key={item.name}>
+                  <Link
+                    href={item.href!}
+                    onClick={onClose}
                     className={cn(
-                      "flex items-center",
-                      isCollapsed ? "" : "space-x-3"
+                      "relative flex items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm transition-colors",
+                      isActive
+                        ? "bg-secondary font-medium text-foreground"
+                        : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                     )}
                   >
+                    {isActive && (
+                      <span className="absolute inset-y-1.5 left-0 w-0.5 rounded-r-sm bg-brand" />
+                    )}
                     <item.icon className="h-4 w-4 shrink-0" />
-                    {!isCollapsed && <span>{item.name}</span>}
-                  </span>
-                  {!isCollapsed && (
-                    <ChevronDown
-                      className={cn(
-                        "h-3.5 w-3.5 transition-transform duration-200",
-                        isOpen && "rotate-180"
-                      )}
-                    />
+                    <span>{item.name}</span>
+                  </Link>
+                </li>
+              );
+            }
+
+            const groupActive = isChildActive(item.children);
+            const isOpen = openGroups[item.name] ?? groupActive;
+
+            return (
+              <li key={item.name}>
+                <button
+                  type="button"
+                  onClick={() => toggleGroup(item.name)}
+                  className={cn(
+                    "flex w-full items-center justify-between rounded-md px-2.5 py-1.5 text-sm transition-colors",
+                    groupActive
+                      ? "text-foreground"
+                      : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
                   )}
+                >
+                  <span className="flex items-center gap-2.5">
+                    <item.icon className="h-4 w-4 shrink-0" />
+                    <span className={cn(groupActive && "font-medium")}>
+                      {item.name}
+                    </span>
+                  </span>
+                  <ChevronDown
+                    className={cn(
+                      "h-3.5 w-3.5 shrink-0 text-muted-foreground transition-transform duration-200",
+                      isOpen && "rotate-180"
+                    )}
+                  />
                 </button>
 
-                {isCollapsed && (
-                  <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 rounded-md bg-foreground px-2 py-1 text-xs text-background shadow-md whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-                    {item.name}
-                  </div>
+                {isOpen && (
+                  <ul className="ml-[1.0625rem] mt-0.5 space-y-0.5 border-l border-border pl-2">
+                    {item.children.map((child) => {
+                      const childActive =
+                        pathname === child.href ||
+                        (!child.href.includes("?") &&
+                          child.href !== "/" &&
+                          pathname.startsWith(child.href));
+                      return (
+                        <li key={child.href}>
+                          <Link
+                            href={child.href}
+                            onClick={onClose}
+                            className={cn(
+                              "relative block rounded-md px-2.5 py-1.5 text-sm transition-colors",
+                              childActive
+                                ? "bg-secondary font-medium text-foreground"
+                                : "text-muted-foreground hover:bg-muted/60 hover:text-foreground"
+                            )}
+                          >
+                            {childActive && (
+                              <span className="absolute inset-y-1.5 -left-2 w-0.5 rounded-r-sm bg-brand" />
+                            )}
+                            {child.name}
+                          </Link>
+                        </li>
+                      );
+                    })}
+                  </ul>
                 )}
-              </div>
-
-              {/* 자식 메뉴 */}
-              {!isCollapsed && isOpen && (
-                <div className="ml-3 mt-0.5 space-y-0.5 border-l pl-3">
-                  {item.children.map((child) => {
-                    const childActive =
-                      pathname === child.href ||
-                      (child.href !== "/" &&
-                        !child.href.includes("?") &&
-                        pathname.startsWith(child.href));
-                    return (
-                      <Link
-                        key={child.href}
-                        href={child.href}
-                        onClick={onClose}
-                        className={cn(
-                          "block rounded-md px-2 py-1.5 text-sm transition-colors",
-                          childActive
-                            ? "bg-accent text-accent-foreground font-medium"
-                            : "text-muted-foreground hover:bg-accent hover:text-accent-foreground"
-                        )}
-                      >
-                        {child.name}
-                      </Link>
-                    );
-                  })}
-                </div>
-              )}
-            </div>
-          );
-        })}
+              </li>
+            );
+          })}
+        </ul>
       </nav>
 
-      {/* 로그아웃 */}
-      <div className="border-t p-2 shrink-0">
-        <div className="relative group">
-          <button
-            className={cn(
-              "w-full flex items-center rounded-lg px-3 py-2 text-sm text-muted-foreground transition-colors hover:bg-accent hover:text-accent-foreground",
-              isCollapsed ? "justify-center" : "space-x-3"
-            )}
-            onClick={() => {
-              // 로그아웃 로직은 별도 구현
-              if (typeof window !== "undefined") {
-                localStorage.removeItem(
-                  process.env.NEXT_PUBLIC_TOKEN_KEY ?? "partner_access_token"
-                );
-                window.location.href = "/login";
-              }
-              onClose?.();
-            }}
-          >
-            <LogOut className="h-4 w-4 shrink-0" />
-            {!isCollapsed && <span>로그아웃</span>}
-          </button>
-          {isCollapsed && (
-            <div className="pointer-events-none absolute left-full top-1/2 z-50 ml-2 -translate-y-1/2 rounded-md bg-foreground px-2 py-1 text-xs text-background shadow-md whitespace-nowrap opacity-0 transition-opacity duration-150 group-hover:opacity-100">
-              로그아웃
-            </div>
-          )}
-        </div>
+      <div className="border-t border-border p-2">
+        <button
+          type="button"
+          className="flex w-full items-center gap-2.5 rounded-md px-2.5 py-1.5 text-sm text-muted-foreground transition-colors hover:bg-muted/60 hover:text-foreground"
+          onClick={() => {
+            if (typeof window !== "undefined") {
+              localStorage.removeItem(
+                process.env.NEXT_PUBLIC_TOKEN_KEY ?? "partner_access_token"
+              );
+              window.location.href = "/login";
+            }
+            onClose?.();
+          }}
+        >
+          <LogOut className="h-4 w-4" />
+          <span>로그아웃</span>
+        </button>
       </div>
     </div>
   );

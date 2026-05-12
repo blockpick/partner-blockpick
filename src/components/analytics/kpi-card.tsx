@@ -1,4 +1,4 @@
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { LucideIcon } from "lucide-react";
 
@@ -10,21 +10,29 @@ interface KpiCardProps {
   loading?: boolean;
 }
 
-export function KpiCard({ title, value, description, icon: Icon, loading }: KpiCardProps) {
+export function KpiCard({
+  title,
+  value,
+  description,
+  icon: Icon,
+  loading,
+}: KpiCardProps) {
   return (
     <Card>
-      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+      <CardHeader className="flex flex-row items-center justify-between pb-2">
+        <p className="text-sm font-medium text-muted-foreground">{title}</p>
         {Icon && <Icon className="h-4 w-4 text-muted-foreground" />}
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-0">
         {loading ? (
-          <Skeleton className="h-8 w-24" />
+          <Skeleton className="h-7 w-24" />
         ) : (
-          <div className="text-2xl font-bold">{value ?? "-"}</div>
+          <div className="text-2xl font-semibold tracking-tight">
+            {value ?? "-"}
+          </div>
         )}
         {description && (
-          <p className="text-xs text-muted-foreground mt-1">{description}</p>
+          <p className="mt-1 text-xs text-muted-foreground">{description}</p>
         )}
       </CardContent>
     </Card>

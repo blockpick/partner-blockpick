@@ -7,17 +7,17 @@ export default function DashboardLayout({
   children: React.ReactNode;
 }) {
   return (
-    <div className="flex h-screen overflow-hidden bg-muted/10">
-      {/* 데스크탑 사이드바 */}
-      <aside className="hidden md:flex h-full shrink-0">
+    <div className="flex min-h-screen bg-background">
+      <aside className="sticky top-0 hidden h-screen w-60 shrink-0 border-r border-border bg-card md:flex md:flex-col">
         <Sidebar />
       </aside>
 
-      {/* 메인 영역 */}
-      <div className="flex flex-1 flex-col overflow-hidden">
+      <div className="flex min-w-0 flex-1 flex-col">
         <Header />
-        <main className="flex-1 overflow-y-auto p-6">
-          {children}
+        <main className="flex-1">
+          <div className="mx-auto w-full max-w-[1400px] px-6 py-6 lg:px-8 lg:py-8">
+            {children}
+          </div>
         </main>
       </div>
     </div>

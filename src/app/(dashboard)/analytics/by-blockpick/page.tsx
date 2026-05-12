@@ -1,11 +1,19 @@
 "use client";
 
-import { useState } from "react";
+import Link from "next/link";
 import {
-  useByBlockpickAnalytics,
-  useBlockpickDetailAnalytics,
-} from "@/lib/hooks/use-analytics";
-import { KpiCard } from "@/components/analytics/kpi-card";
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { ArrowRight } from "lucide-react";
+import { ChartMount } from "@/components/charts/chart-mount";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader } from "@/components/dashboard/page-header";
 import {
   Card,
   CardContent,
@@ -21,180 +29,152 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
-import { Users, Eye, Trophy, TrendingUp } from "lucide-react";
+import { useByBlockpickAnalytics } from "@/lib/hooks/use-analytics";
+import { formatNumber, formatPercent } from "@/lib/format";
+
+const TOOLTIP_STYLE = {
+  borderRadius: 8,
+  border: "1px solid hsl(var(--border))",
+  background: "hsl(var(--background))",
+  fontSize: 12,
+};
 
 export default function AnalyticsByBlockpickPage() {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
-  const { data: list, isLoading } = useByBlockpickAnalytics();
-  const { data: detail, isLoading: detailLoading } = useBlockpickDetailAnalytics(
-    selectedId ?? "",
-  );
+  const { data, isLoading } = useByBlockpickAnalytics();
+  const items = data ?? [];
+  const chartData = items.map((item) => ({
+    name:
+      item.blockpickTitle.length > 12
+        ? `${item.blockpickTitle.slice(0, 12)}…`
+        : item.blockpickTitle,
+    participants: item.participants,
+    winners: item.winnerCount,
+  }));
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">블록픽별 성과</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          블록픽을 선택하면 상세 KPI를 확인할 수 있습니다
-        </p>
+      <PageHeader
+        title="블록픽별 성과"
+        description="캠페인별 볼륨과 전환 효율을 한 화면에서 비교합니다."
+      />
+
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardDescription>참여 규모 비교</CardDescription>
+            <CardTitle>캠페인 볼륨 랭킹</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!chartData.length && !isLoading ? (
+              <EmptyState title="집계된 블록픽 성과가 없습니다." />
+            ) : (
+              <ChartMount className="h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={chartData} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="name" tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value) => formatNumber(Number(value ?? 0))} />
+                    <Bar dataKey="participants" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="winners" fill="hsl(var(--chart-2))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartMount>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardDescription>효율 비교</CardDescription>
+            <CardTitle>완주율 순위</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!items.length && !isLoading ? (
+              <EmptyState title="집계된 블록픽 성과가 없습니다." />
+            ) : (
+              items.map((item, index) => (
+                <div key={item.blockpickId} className="space-y-2 rounded-md border border-border p-3">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="truncate text-sm font-medium">{item.blockpickTitle}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        참여 {formatNumber(item.participants)}명 · 당첨자{" "}
+                        {formatNumber(item.winnerCount)}명
+                      </p>
+                    </div>
+                    <span className="text-base font-semibold tabular-nums">
+                      {formatPercent(item.completionRate)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-sm bg-muted">
+                    <div
+                      className="h-full rounded-sm"
+                      style={{
+                        width: `${Math.min(item.completionRate * 100, 100)}%`,
+                        backgroundColor: `hsl(var(--chart-${(index % 4) + 1}))`,
+                      }}
+                    />
+                  </div>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>추가 참여 비중 {formatPercent(item.extraEntryRatio)}</span>
+                    <Link
+                      href={`/blockpicks/${item.blockpickId}`}
+                      className="inline-flex items-center gap-1 text-foreground hover:underline"
+                    >
+                      상세
+                      <ArrowRight className="h-3 w-3" />
+                    </Link>
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
       </div>
 
-      {/* 블록픽 KPI 테이블 */}
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">블록픽별 KPI</CardTitle>
-          <CardDescription>행을 클릭하면 상세 KPI를 확인합니다</CardDescription>
+          <CardDescription>비교 표</CardDescription>
+          <CardTitle>블록픽 성과 비교</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
+        <CardContent className="p-0">
+          {!items.length && !isLoading ? (
+            <div className="px-5 py-6">
+              <EmptyState title="집계된 블록픽 성과가 없습니다." />
+            </div>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>블록픽</TableHead>
-                  <TableHead className="text-right">참여자</TableHead>
-                  <TableHead>완료율</TableHead>
-                  <TableHead className="text-right">당첨자</TableHead>
-                  <TableHead>추가참여 비율</TableHead>
+                  <TableHead>참여자</TableHead>
+                  <TableHead>완주율</TableHead>
+                  <TableHead>추가 참여 비중</TableHead>
+                  <TableHead>당첨자</TableHead>
+                  <TableHead className="text-right">이동</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 3 }).map((_, i) => (
-                    <TableRow key={i}>
-                      {Array.from({ length: 5 }).map((__, j) => (
-                        <TableCell key={j}>
-                          <Skeleton className="h-4 w-full" />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : !list?.length ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-10 text-muted-foreground"
-                    >
-                      데이터가 없습니다
+                {items.map((item) => (
+                  <TableRow key={item.blockpickId}>
+                    <TableCell className="font-medium">{item.blockpickTitle}</TableCell>
+                    <TableCell className="tabular-nums">{formatNumber(item.participants)}</TableCell>
+                    <TableCell className="tabular-nums">{formatPercent(item.completionRate)}</TableCell>
+                    <TableCell className="tabular-nums">{formatPercent(item.extraEntryRatio)}</TableCell>
+                    <TableCell className="tabular-nums">{formatNumber(item.winnerCount)}</TableCell>
+                    <TableCell className="text-right">
+                      <Link href={`/blockpicks/${item.blockpickId}`} className="inline-flex">
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      </Link>
                     </TableCell>
                   </TableRow>
-                ) : (
-                  list.map((bp) => (
-                    <TableRow
-                      key={bp.blockpickId}
-                      className={`cursor-pointer transition-colors ${
-                        selectedId === bp.blockpickId ? "bg-muted/60" : "hover:bg-muted/30"
-                      }`}
-                      onClick={() =>
-                        setSelectedId(
-                          selectedId === bp.blockpickId ? null : bp.blockpickId,
-                        )
-                      }
-                    >
-                      <TableCell className="font-medium">
-                        {bp.blockpickTitle}
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {bp.participants.toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress
-                            value={bp.completionRate * 100}
-                            className="w-20 h-2"
-                          />
-                          <span className="text-sm text-muted-foreground w-10">
-                            {(bp.completionRate * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {bp.winnerCount.toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress
-                            value={bp.extraEntryRatio * 100}
-                            className="w-20 h-2"
-                          />
-                          <span className="text-sm text-muted-foreground w-10">
-                            {(bp.extraEntryRatio * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                ))}
               </TableBody>
             </Table>
-          </div>
+          )}
         </CardContent>
       </Card>
-
-      {/* 상세 KPI 카드 */}
-      {selectedId && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">
-              {detail?.blockpickTitle ?? "상세 KPI"}
-            </CardTitle>
-            <CardDescription>선택된 블록픽의 상세 성과 지표</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
-              <KpiCard
-                title="방문 수"
-                value={detail?.visits.toLocaleString()}
-                icon={Eye}
-                loading={detailLoading}
-              />
-              <KpiCard
-                title="참여 수"
-                value={detail?.participants.toLocaleString()}
-                icon={Users}
-                loading={detailLoading}
-              />
-              <KpiCard
-                title="당첨자"
-                value={detail?.winnerCount.toLocaleString()}
-                icon={Trophy}
-                loading={detailLoading}
-              />
-              <KpiCard
-                title="추가 참여 비율"
-                value={
-                  detail
-                    ? `${(detail.extraEntryRatio * 100).toFixed(1)}%`
-                    : undefined
-                }
-                icon={TrendingUp}
-                loading={detailLoading}
-              />
-              <KpiCard
-                title="무료 참여권"
-                value={detail?.freeEntryCount.toLocaleString()}
-                loading={detailLoading}
-              />
-              <KpiCard
-                title="추가 참여권"
-                value={detail?.extraEntryCount.toLocaleString()}
-                loading={detailLoading}
-              />
-              <KpiCard
-                title="친구초대"
-                value={detail?.referralCount.toLocaleString()}
-                loading={detailLoading}
-              />
-              <KpiCard
-                title="광고 시청"
-                value={detail?.adWatchCount.toLocaleString()}
-                loading={detailLoading}
-              />
-            </div>
-          </CardContent>
-        </Card>
-      )}
     </div>
   );
 }

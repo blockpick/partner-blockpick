@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
-import { format } from "date-fns";
-import { ko } from "date-fns/locale";
+import Link from "next/link";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,170 +11,173 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
-import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import { useMyPlan, useCancelSubscription } from "@/lib/hooks/use-subscription";
-import { PLAN_TIER_LABELS } from "@/lib/types/plan";
-import { CheckCircle2, AlertCircle, CreditCard, CalendarDays } from "lucide-react";
-import Link from "next/link";
+import { useCancelSubscription, useMyPlan } from "@/lib/hooks/use-subscription";
+import { formatCurrency, formatDate } from "@/lib/format";
 
-const STATUS_MAP = {
-  ACTIVE: { label: "이용 중", variant: "default" as const },
-  PAST_DUE: { label: "결제 실패", variant: "destructive" as const },
-  CANCELLED: { label: "해지됨", variant: "secondary" as const },
-  TRIALING: { label: "체험 중", variant: "outline" as const },
+const STATUS_LABEL: Record<string, string> = {
+  ACTIVE: "활성",
+  PAUSED: "일시 정지",
+  CANCELLED: "해지",
+  TRIALING: "체험중",
+  PAST_DUE: "결제 실패",
+};
+
+const STATUS_VARIANT: Record<
+  string,
+  "success" | "warning" | "destructive" | "secondary" | "outline"
+> = {
+  ACTIVE: "success",
+  TRIALING: "info" as never,
+  PAUSED: "warning",
+  PAST_DUE: "destructive",
+  CANCELLED: "secondary",
 };
 
 export default function BillingPlanPage() {
-  const { data: subscription, isLoading } = useMyPlan();
+  const { data, isLoading } = useMyPlan();
   const cancel = useCancelSubscription();
-  const [cancelDialogOpen, setCancelDialogOpen] = useState(false);
 
   if (isLoading) {
     return (
       <div className="space-y-6">
-        <div>
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="mt-1 h-4 w-56" />
-        </div>
-        <Skeleton className="h-48 w-full" />
-        <Skeleton className="h-32 w-full" />
+        <PageHeader title="현재 플랜" description="구독 상태와 청구 주기를 확인합니다." />
+        <Skeleton className="h-40 w-full" />
       </div>
     );
   }
 
-  if (!subscription) return null;
-
-  const { plan, status, currentPeriodEnd, cancelAtPeriodEnd } = subscription;
-  const statusInfo = STATUS_MAP[status];
-  const periodEnd = new Date(currentPeriodEnd);
+  if (!data) {
+    return (
+      <div className="space-y-6">
+        <PageHeader title="현재 플랜" description="구독 상태와 청구 주기를 확인합니다." />
+        <EmptyState
+          title="구독 정보가 없어요"
+          description="요금제를 선택하면 이곳에 플랜 정보가 표시됩니다."
+          action={
+            <Link href="/billing/upgrade">
+              <Button size="sm">플랜 둘러보기</Button>
+            </Link>
+          }
+        />
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">현재 요금제</h1>
-        <p className="text-sm text-muted-foreground">구독 중인 플랜과 결제 현황을 확인합니다</p>
-      </div>
+      <PageHeader
+        title="현재 플랜"
+        description="구독 상태와 청구 주기를 확인합니다."
+        actions={
+          <>
+            <Link href="/billing/upgrade">
+              <Button size="sm">플랜 변경</Button>
+            </Link>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => cancel.mutate()}
+              disabled={cancel.isPending || data.cancelAtPeriodEnd}
+            >
+              {data.cancelAtPeriodEnd ? "해지 예정" : "구독 종료 예약"}
+            </Button>
+          </>
+        }
+      />
 
-      {/* 현재 플랜 카드 */}
       <Card>
         <CardHeader>
-          <div className="flex items-start justify-between">
-            <div>
-              <CardTitle className="text-xl">
-                {PLAN_TIER_LABELS[plan.tier]} 플랜
-              </CardTitle>
-              <CardDescription className="mt-1">
-                월{" "}
-                <span className="text-lg font-bold text-foreground">
-                  {plan.priceMonthly.toLocaleString()}원
-                </span>
-              </CardDescription>
+          <div className="flex items-center justify-between gap-2">
+            <div className="space-y-1">
+              <CardDescription>현재 사용 중</CardDescription>
+              <CardTitle className="text-xl">{data.plan.name}</CardTitle>
             </div>
-            <Badge variant={statusInfo.variant}>{statusInfo.label}</Badge>
+            <Badge variant={STATUS_VARIANT[data.status] ?? "outline"}>
+              {STATUS_LABEL[data.status] ?? data.status}
+            </Badge>
           </div>
         </CardHeader>
-        <CardContent className="space-y-4">
-          {cancelAtPeriodEnd && (
-            <div className="flex items-center gap-2 rounded-lg border border-orange-200 bg-orange-50 p-3 text-sm text-orange-800 dark:border-orange-900 dark:bg-orange-950 dark:text-orange-300">
-              <AlertCircle className="h-4 w-4 shrink-0" />
-              <span>
-                구독이 해지 예약되어 있습니다. {format(periodEnd, "M월 d일", { locale: ko })}까지
-                이용 가능합니다.
-              </span>
-            </div>
-          )}
-
-          <div className="grid gap-4 sm:grid-cols-2">
-            <div className="flex items-center gap-3 rounded-lg border p-3">
-              <CalendarDays className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">다음 결제일</p>
-                <p className="font-medium">
-                  {cancelAtPeriodEnd
-                    ? "갱신 안 함"
-                    : format(periodEnd, "yyyy년 M월 d일", { locale: ko })}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 rounded-lg border p-3">
-              <CreditCard className="h-5 w-5 text-muted-foreground" />
-              <div>
-                <p className="text-xs text-muted-foreground">결제 금액</p>
-                <p className="font-medium">
-                  {cancelAtPeriodEnd ? "-" : `${plan.priceMonthly.toLocaleString()}원`}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          {/* 포함 기능 */}
-          <div>
-            <p className="mb-2 text-sm font-medium">포함 기능</p>
-            <ul className="space-y-1.5">
-              {plan.features.map((feature) => (
-                <li key={feature} className="flex items-center gap-2 text-sm text-muted-foreground">
-                  <CheckCircle2 className="h-3.5 w-3.5 shrink-0 text-green-500" />
-                  {feature}
-                </li>
-              ))}
-            </ul>
-          </div>
+        <CardContent className="grid gap-x-6 gap-y-3 sm:grid-cols-2">
+          <InfoRow
+            label="월 요금"
+            value={formatCurrency(data.plan.priceMonthly)}
+          />
+          <InfoRow
+            label="다음 결제일"
+            value={formatDate(data.currentPeriodEnd)}
+          />
+          <InfoRow
+            label="현재 기간 시작"
+            value={formatDate(data.currentPeriodStart)}
+          />
+          <InfoRow
+            label="기간 종료 시 해지"
+            value={data.cancelAtPeriodEnd ? "예정됨" : "유지"}
+            warn={data.cancelAtPeriodEnd}
+          />
         </CardContent>
       </Card>
 
-      {/* CTA */}
-      <div className="flex flex-wrap gap-3">
-        <Button asChild>
-          <Link href="/billing/upgrade">플랜 변경</Link>
-        </Button>
-        {!cancelAtPeriodEnd && status === "ACTIVE" && (
-          <Button variant="outline" onClick={() => setCancelDialogOpen(true)}>
-            구독 해지
-          </Button>
-        )}
-        <Button variant="ghost" asChild>
-          <Link href="/billing/payment">결제 수단 관리</Link>
-        </Button>
-      </div>
+      <Card>
+        <CardHeader>
+          <CardDescription>포함 기능</CardDescription>
+          <CardTitle className="text-base">플랜 제공 기능</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ul className="grid gap-2 sm:grid-cols-2">
+            {data.plan.features.map((feature) => (
+              <li
+                key={feature}
+                className="flex items-start gap-2 rounded-md border border-border bg-muted/30 px-3 py-2 text-sm"
+              >
+                <span className="mt-0.5 inline-block h-1.5 w-1.5 shrink-0 rounded-full bg-foreground/60" />
+                {feature}
+              </li>
+            ))}
+          </ul>
+        </CardContent>
+      </Card>
 
-      {/* 해지 확인 다이얼로그 */}
-      <Dialog open={cancelDialogOpen} onOpenChange={setCancelDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>구독을 해지하시겠습니까?</DialogTitle>
-            <DialogDescription>
-              {format(periodEnd, "yyyy년 M월 d일", { locale: ko })}까지는 서비스를 계속
-              이용할 수 있습니다. 이후 자동으로 해지됩니다.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCancelDialogOpen(false)}>
-              취소
+      <Card>
+        <CardContent className="flex flex-col items-start gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
+          <div className="space-y-0.5">
+            <p className="text-sm font-medium">더 큰 한도가 필요하세요?</p>
+            <p className="text-xs text-muted-foreground">
+              상위 플랜으로 변경하면 더 많은 캠페인과 팀 멤버를 운영할 수 있어요.
+            </p>
+          </div>
+          <Link href="/billing/upgrade">
+            <Button variant="outline" size="sm">
+              플랜 비교 보기
             </Button>
-            <Button
-              variant="destructive"
-              disabled={cancel.isPending}
-              onClick={() => {
-                cancel.mutate(undefined, {
-                  onSuccess: () => setCancelDialogOpen(false),
-                });
-              }}
-            >
-              {cancel.isPending ? "처리 중..." : "구독 해지"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+          </Link>
+        </CardContent>
+      </Card>
+    </div>
+  );
+}
+
+function InfoRow({
+  label,
+  value,
+  warn,
+}: {
+  label: string;
+  value: string;
+  warn?: boolean;
+}) {
+  return (
+    <div className="space-y-1 border-b border-border py-2 last:border-0 sm:border-0 sm:py-0">
+      <p className="text-xs text-muted-foreground">{label}</p>
+      <p
+        className={
+          warn ? "font-medium text-[hsl(var(--warning))]" : "font-medium"
+        }
+      >
+        {value}
+      </p>
     </div>
   );
 }

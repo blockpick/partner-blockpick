@@ -1,6 +1,7 @@
 "use client";
 
 import { Check, X } from "lucide-react";
+import { PageHeader } from "@/components/dashboard/page-header";
 import {
   Table,
   TableBody,
@@ -119,12 +120,10 @@ function PermIcon({ allowed }: { allowed: boolean }) {
 export default function TeamRolesPage() {
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">권한 관리</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          역할별 권한 매트릭스를 확인합니다. 권한 변경은 OWNER만 가능합니다.
-        </p>
-      </div>
+      <PageHeader
+        title="권한 관리"
+        description="역할별 권한 매트릭스를 확인합니다. 권한 변경은 OWNER만 가능합니다."
+      />
 
       {/* 역할 설명 카드 */}
       <div className="grid gap-4 md:grid-cols-3">

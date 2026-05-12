@@ -1,6 +1,19 @@
 "use client";
 
-import { useChannelAnalytics } from "@/lib/hooks/use-analytics";
+import { useState } from "react";
+import {
+  Bar,
+  BarChart,
+  CartesianGrid,
+  ResponsiveContainer,
+  Tooltip,
+  XAxis,
+  YAxis,
+} from "recharts";
+import { ChartMount } from "@/components/charts/chart-mount";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { BlockpickSelect } from "@/components/operations/blockpick-select";
 import {
   Card,
   CardContent,
@@ -8,6 +21,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Label } from "@/components/ui/label";
 import {
   Table,
   TableBody,
@@ -16,186 +30,142 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Skeleton } from "@/components/ui/skeleton";
-import { Progress } from "@/components/ui/progress";
-import { Badge } from "@/components/ui/badge";
-import {
-  BarChart,
-  Bar,
-  XAxis,
-  YAxis,
-  CartesianGrid,
-  Tooltip,
-  Legend,
-  ResponsiveContainer,
-} from "recharts";
-import type { UtmChannel } from "@/lib/types/analytics";
+import { useChannelAnalytics } from "@/lib/hooks/use-analytics";
+import { formatNumber, formatPercent } from "@/lib/format";
 
-const CHANNEL_LABEL: Record<UtmChannel, string> = {
-  organic: "자연 유입",
-  social: "소셜",
-  email: "이메일",
-  push: "푸시 알림",
-  paid: "유료 광고",
+const TOOLTIP_STYLE = {
+  borderRadius: 8,
+  border: "1px solid hsl(var(--border))",
+  background: "hsl(var(--background))",
+  fontSize: 12,
 };
 
-const CHANNEL_COLOR: Record<UtmChannel, string> = {
-  organic: "#6366f1",
-  social: "#22c55e",
-  email: "#f59e0b",
-  push: "#ec4899",
-  paid: "#8b5cf6",
+const CHANNEL_LABEL: Record<string, string> = {
+  organic: "Organic",
+  social: "Social",
+  email: "Email",
+  push: "Push",
+  paid: "Paid",
 };
 
-export default function AnalyticsChannelsPage() {
-  const { data, isLoading } = useChannelAnalytics();
-  const stats = data?.stats ?? [];
-
-  const maxVisits = Math.max(...stats.map((s) => s.visits), 1);
+export default function ChannelsAnalyticsPage() {
+  const [blockpickId, setBlockpickId] = useState("all");
+  const selectedBlockpickId = blockpickId === "all" ? undefined : blockpickId;
+  const { data } = useChannelAnalytics(selectedBlockpickId);
+  const items = data?.stats ?? [];
 
   return (
     <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold">유입 채널 분석</h1>
-        <p className="text-sm text-muted-foreground mt-0.5">
-          UTM 채널별 유입 수와 전환율을 확인합니다
-        </p>
-      </div>
+      <PageHeader
+        title="유입 채널 분석"
+        description="채널별 트래픽과 실제 참여 전환을 함께 비교합니다."
+      />
 
-      {/* 바 차트 */}
       <Card>
-        <CardHeader>
-          <CardTitle className="text-base">채널별 방문 / 참여 비교</CardTitle>
-          <CardDescription>채널별 방문 수와 실제 참여 수 비교</CardDescription>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <Skeleton className="h-[260px] w-full" />
-          ) : (
-            <ResponsiveContainer width="100%" height={260}>
-              <BarChart
-                data={stats.map((s) => ({
-                  ...s,
-                  name: CHANNEL_LABEL[s.channel],
-                }))}
-                margin={{ top: 5, right: 20, left: 0, bottom: 5 }}
-              >
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                <YAxis tick={{ fontSize: 11 }} width={50} />
-                <Tooltip
-                  formatter={(value: unknown, name: unknown) => {
-                    const labels: Record<string, string> = {
-                      visits: "방문",
-                      participants: "참여",
-                    };
-                    const v = typeof value === "number" ? value.toLocaleString() : String(value);
-                    const n = String(name);
-                    return [v, labels[n] ?? n];
-                  }}
-                />
-                <Legend
-                  formatter={(value: string) => {
-                    const labels: Record<string, string> = {
-                      visits: "방문",
-                      participants: "참여",
-                    };
-                    return labels[value] ?? value;
-                  }}
-                />
-                <Bar dataKey="visits" fill="#6366f1" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="participants" fill="#22c55e" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          )}
+        <CardContent className="pt-4">
+          <div className="space-y-1.5">
+            <Label>블록픽</Label>
+            <BlockpickSelect value={blockpickId} onChange={setBlockpickId} />
+          </div>
         </CardContent>
       </Card>
 
-      {/* 상세 테이블 */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardDescription>채널별 볼륨 비교</CardDescription>
+            <CardTitle>방문 vs 참여</CardTitle>
+          </CardHeader>
+          <CardContent>
+            {!items.length ? (
+              <EmptyState title="채널 데이터가 없습니다." />
+            ) : (
+              <ChartMount className="h-[320px]">
+                <ResponsiveContainer width="100%" height="100%">
+                  <BarChart data={items} margin={{ top: 8, right: 8, left: -16, bottom: 0 }}>
+                    <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" />
+                    <XAxis dataKey="channel" tickFormatter={(value) => CHANNEL_LABEL[value] ?? value} tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <YAxis tickLine={false} axisLine={false} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                    <Tooltip contentStyle={TOOLTIP_STYLE} formatter={(value) => formatNumber(Number(value ?? 0))} />
+                    <Bar dataKey="visits" fill="hsl(var(--chart-3))" radius={[4, 4, 0, 0]} />
+                    <Bar dataKey="participants" fill="hsl(var(--chart-1))" radius={[4, 4, 0, 0]} />
+                  </BarChart>
+                </ResponsiveContainer>
+              </ChartMount>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardDescription>전환 효율</CardDescription>
+            <CardTitle>전환율 랭킹</CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-3">
+            {!items.length ? (
+              <EmptyState title="채널 데이터가 없습니다." />
+            ) : (
+              items.map((item, index) => (
+                <div key={item.channel} className="space-y-2 rounded-md border border-border p-3">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{CHANNEL_LABEL[item.channel] ?? item.channel}</p>
+                      <p className="mt-0.5 text-xs text-muted-foreground">
+                        방문 {formatNumber(item.visits)}회 · 참여 {formatNumber(item.participants)}명
+                      </p>
+                    </div>
+                    <span className="text-lg font-semibold tabular-nums">
+                      {formatPercent(item.conversionRate)}
+                    </span>
+                  </div>
+                  <div className="h-1.5 rounded-sm bg-muted">
+                    <div
+                      className="h-full rounded-sm"
+                      style={{
+                        width: `${Math.min(item.conversionRate * 100, 100)}%`,
+                        backgroundColor: `hsl(var(--chart-${(index % 4) + 1}))`,
+                      }}
+                    />
+                  </div>
+                </div>
+              ))
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
-          <CardTitle className="text-base">채널별 상세 지표</CardTitle>
+          <CardDescription>원본 데이터</CardDescription>
+          <CardTitle>채널별 세부 수치</CardTitle>
         </CardHeader>
-        <CardContent>
-          <div className="rounded-md border">
+        <CardContent className="p-0">
+          {!items.length ? (
+            <div className="px-5 py-6">
+              <EmptyState title="채널 데이터가 없습니다." />
+            </div>
+          ) : (
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>채널</TableHead>
-                  <TableHead className="text-right">방문 수</TableHead>
-                  <TableHead>방문 비중</TableHead>
-                  <TableHead className="text-right">참여 수</TableHead>
+                  <TableHead>방문</TableHead>
+                  <TableHead>참여</TableHead>
                   <TableHead>전환율</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {isLoading ? (
-                  Array.from({ length: 5 }).map((_, i) => (
-                    <TableRow key={i}>
-                      {Array.from({ length: 5 }).map((__, j) => (
-                        <TableCell key={j}>
-                          <Skeleton className="h-4 w-full" />
-                        </TableCell>
-                      ))}
-                    </TableRow>
-                  ))
-                ) : stats.length === 0 ? (
-                  <TableRow>
-                    <TableCell
-                      colSpan={5}
-                      className="text-center py-10 text-muted-foreground"
-                    >
-                      데이터가 없습니다
-                    </TableCell>
+                {items.map((item) => (
+                  <TableRow key={item.channel}>
+                    <TableCell className="font-medium">{CHANNEL_LABEL[item.channel] ?? item.channel}</TableCell>
+                    <TableCell className="tabular-nums">{formatNumber(item.visits)}</TableCell>
+                    <TableCell className="tabular-nums">{formatNumber(item.participants)}</TableCell>
+                    <TableCell className="tabular-nums">{formatPercent(item.conversionRate)}</TableCell>
                   </TableRow>
-                ) : (
-                  stats.map((s) => (
-                    <TableRow key={s.channel}>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <span
-                            className="inline-block h-3 w-3 rounded-full shrink-0"
-                            style={{ backgroundColor: CHANNEL_COLOR[s.channel] }}
-                          />
-                          <Badge variant="outline" className="font-normal">
-                            {CHANNEL_LABEL[s.channel]}
-                          </Badge>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right font-medium">
-                        {s.visits.toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress
-                            value={(s.visits / maxVisits) * 100}
-                            className="w-20 h-2"
-                          />
-                          <span className="text-sm text-muted-foreground w-10">
-                            {((s.visits / maxVisits) * 100).toFixed(0)}%
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {s.participants.toLocaleString()}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Progress
-                            value={s.conversionRate * 100}
-                            className="w-20 h-2"
-                          />
-                          <span className="text-sm text-muted-foreground w-10">
-                            {(s.conversionRate * 100).toFixed(1)}%
-                          </span>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
+                ))}
               </TableBody>
             </Table>
-          </div>
+          )}
         </CardContent>
       </Card>
     </div>

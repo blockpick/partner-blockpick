@@ -11,7 +11,7 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Badge } from "@/components/ui/badge";
+import { BlockpickStatusBadge } from "@/components/blockpicks/blockpick-status-badge";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import {
@@ -36,34 +36,8 @@ import {
   Search,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
-import type { BlockpickListItem, BlockpickStatus } from "@/lib/types/blockpick";
-
-const STATUS_LABEL: Record<BlockpickStatus, string> = {
-  ACTIVE: "진행중",
-  SCHEDULED: "예약됨",
-  DRAFT: "임시저장",
-  ENDED: "종료됨",
-  CANCELLED: "취소됨",
-};
-
-const STATUS_VARIANT: Record<
-  BlockpickStatus,
-  "default" | "secondary" | "outline" | "destructive"
-> = {
-  ACTIVE: "default",
-  SCHEDULED: "secondary",
-  DRAFT: "outline",
-  ENDED: "secondary",
-  CANCELLED: "destructive",
-};
-
-const STATUS_CLASS: Record<BlockpickStatus, string> = {
-  ACTIVE: "bg-green-100 text-green-700 border-green-200",
-  SCHEDULED: "bg-blue-100 text-blue-700 border-blue-200",
-  DRAFT: "bg-gray-100 text-gray-600 border-gray-200",
-  ENDED: "bg-orange-100 text-orange-700 border-orange-200",
-  CANCELLED: "bg-red-100 text-red-700 border-red-200",
-};
+import { computeBlockpickProgress, formatDday } from "@/lib/format";
+import type { BlockpickListItem } from "@/lib/types/blockpick";
 
 function fmt(dateStr?: string) {
   if (!dateStr) return "—";
@@ -115,15 +89,16 @@ export function BlockpicksTable({
       </div>
 
       {/* 테이블 */}
-      <div className="rounded-lg border overflow-hidden">
+      <div className="overflow-hidden rounded-md border border-border">
         <Table>
           <TableHeader>
-            <TableRow className="bg-muted/30">
+            <TableRow>
               <TableHead className="w-[300px]">블록픽</TableHead>
               <TableHead>상태</TableHead>
+              <TableHead>진행</TableHead>
               <TableHead className="text-right">참여자</TableHead>
               <TableHead className="text-right">방문</TableHead>
-              <TableHead>종료 일시</TableHead>
+              <TableHead>종료</TableHead>
               <TableHead className="w-[50px]" />
             </TableRow>
           </TableHeader>
@@ -133,20 +108,21 @@ export function BlockpicksTable({
                 <TableRow key={i}>
                   <TableCell>
                     <div className="flex items-center gap-3">
-                      <Skeleton className="h-10 w-10 rounded" />
+                      <Skeleton className="h-10 w-10 rounded-md" />
                       <Skeleton className="h-4 w-40" />
                     </div>
                   </TableCell>
                   <TableCell><Skeleton className="h-5 w-16" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-12 ml-auto" /></TableCell>
-                  <TableCell><Skeleton className="h-4 w-12 ml-auto" /></TableCell>
+                  <TableCell><Skeleton className="h-2 w-24" /></TableCell>
+                  <TableCell><Skeleton className="ml-auto h-4 w-12" /></TableCell>
+                  <TableCell><Skeleton className="ml-auto h-4 w-12" /></TableCell>
                   <TableCell><Skeleton className="h-4 w-24" /></TableCell>
                   <TableCell />
                 </TableRow>
               ))
             ) : items.length === 0 ? (
               <TableRow>
-                <TableCell colSpan={6} className="py-16 text-center">
+                <TableCell colSpan={7} className="py-16 text-center">
                   <div className="space-y-3">
                     <p className="text-muted-foreground">블록픽이 없습니다</p>
                     <Link href="/blockpicks/new">
@@ -159,7 +135,11 @@ export function BlockpicksTable({
                 </TableCell>
               </TableRow>
             ) : (
-              items.map((bp) => (
+              items.map((bp) => {
+                const progress = computeBlockpickProgress(bp.startAt, bp.endAt);
+                const dday = formatDday(bp.endAt);
+                const isActive = bp.status === "ACTIVE";
+                return (
                 <TableRow
                   key={bp.id}
                   className="cursor-pointer hover:bg-muted/30"
@@ -172,28 +152,40 @@ export function BlockpicksTable({
                         <img
                           src={bp.thumbnailUrl}
                           alt=""
-                          className="h-10 w-10 rounded object-cover shrink-0"
+                          className="h-10 w-10 shrink-0 rounded-md object-cover"
                         />
                       ) : (
-                        <div className="h-10 w-10 rounded bg-muted shrink-0" />
+                        <div className="h-10 w-10 shrink-0 rounded-md bg-muted" />
                       )}
-                      <span className="text-sm font-medium truncate max-w-[220px]">
+                      <span className="max-w-[220px] truncate text-sm font-medium">
                         {bp.title}
                       </span>
                     </div>
                   </TableCell>
                   <TableCell>
-                    <Badge
-                      className={STATUS_CLASS[bp.status]}
-                      variant={STATUS_VARIANT[bp.status]}
-                    >
-                      {STATUS_LABEL[bp.status]}
-                    </Badge>
+                    <BlockpickStatusBadge status={bp.status} />
                   </TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell>
+                    {isActive ? (
+                      <div className="w-28 space-y-1">
+                        <div className="h-1 overflow-hidden rounded-sm bg-muted">
+                          <div
+                            className="h-full rounded-sm bg-brand"
+                            style={{ width: `${progress}%` }}
+                          />
+                        </div>
+                        <p className="text-[11px] tabular-nums text-muted-foreground">
+                          {dday}
+                        </p>
+                      </div>
+                    ) : (
+                      <span className="text-xs text-muted-foreground">—</span>
+                    )}
+                  </TableCell>
+                  <TableCell className="text-right text-sm tabular-nums">
                     {bp.totalParticipants.toLocaleString()}
                   </TableCell>
-                  <TableCell className="text-right text-sm">
+                  <TableCell className="text-right text-sm tabular-nums">
                     {bp.totalVisits.toLocaleString()}
                   </TableCell>
                   <TableCell className="text-sm text-muted-foreground">
@@ -243,7 +235,8 @@ export function BlockpicksTable({
                     </DropdownMenu>
                   </TableCell>
                 </TableRow>
-              ))
+                );
+              })
             )}
           </TableBody>
         </Table>

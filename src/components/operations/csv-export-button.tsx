@@ -3,14 +3,14 @@
 import { Button } from "@/components/ui/button";
 import { Download } from "lucide-react";
 
-interface CsvExportButtonProps<T extends Record<string, unknown>> {
+interface CsvExportButtonProps<T extends object> {
   data: T[];
   filename: string;
   headers: { key: keyof T; label: string }[];
   disabled?: boolean;
 }
 
-export function CsvExportButton<T extends Record<string, unknown>>({
+export function CsvExportButton<T extends object>({
   data,
   filename,
   headers,

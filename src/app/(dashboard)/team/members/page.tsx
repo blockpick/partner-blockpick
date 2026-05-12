@@ -34,6 +34,8 @@ import {
 } from "@/components/ui/dialog";
 import { RoleBadge } from "@/components/team/role-badge";
 import { InviteMemberDialog } from "@/components/team/invite-member-dialog";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { PageHeader } from "@/components/dashboard/page-header";
 import {
   useTeamMembers,
   useChangeRole,
@@ -45,18 +47,10 @@ import { ko } from "date-fns/locale";
 
 function StatusBadge({ status }: { status: TeamMember["status"] }) {
   if (status === "ACTIVE") {
-    return (
-      <Badge className="border-transparent bg-green-100 text-green-800 dark:bg-green-900/30 dark:text-green-300">
-        활성
-      </Badge>
-    );
+    return <Badge variant="success">활성</Badge>;
   }
   if (status === "INVITED") {
-    return (
-      <Badge className="border-transparent bg-yellow-100 text-yellow-800 dark:bg-yellow-900/30 dark:text-yellow-300">
-        초대 중
-      </Badge>
-    );
+    return <Badge variant="warning">초대 중</Badge>;
   }
   return <Badge variant="secondary">비활성</Badge>;
 }
@@ -86,25 +80,35 @@ export default function TeamMembersPage() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">팀원 관리</h1>
-          <p className="text-sm text-muted-foreground mt-1">
-            팀원을 초대하고 역할을 관리합니다.
-          </p>
-        </div>
-        <Button onClick={() => setInviteOpen(true)}>
-          <UserPlus className="mr-2 h-4 w-4" />
-          팀원 초대
-        </Button>
-      </div>
+      <PageHeader
+        title="멤버 관리"
+        description="대시보드에 접근하는 팀원을 초대하고 역할을 관리합니다."
+        actions={
+          <Button onClick={() => setInviteOpen(true)} className="gap-1.5">
+            <UserPlus className="h-4 w-4" />
+            멤버 초대
+          </Button>
+        }
+      />
 
-      <div className="rounded-lg border bg-card">
+      <div className="rounded-md border border-border bg-card">
         {isLoading ? (
-          <div className="p-4 space-y-3">
+          <div className="space-y-2 p-4">
             {Array.from({ length: 4 }).map((_, i) => (
-              <Skeleton key={i} className="h-14 w-full" />
+              <Skeleton key={i} className="h-12 w-full" />
             ))}
+          </div>
+        ) : !(members ?? []).length ? (
+          <div className="px-4 py-6">
+            <EmptyState
+              title="아직 등록된 멤버가 없어요"
+              description="팀원을 초대해 함께 캠페인을 운영해 보세요."
+              action={
+                <Button size="sm" onClick={() => setInviteOpen(true)}>
+                  멤버 초대
+                </Button>
+              }
+            />
           </div>
         ) : (
           <Table>

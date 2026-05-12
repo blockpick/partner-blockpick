@@ -3,6 +3,7 @@
 import { useEffect } from "react";
 import { useForm } from "react-hook-form";
 import { Building2, AlertCircle } from "lucide-react";
+import { PageHeader } from "@/components/dashboard/page-header";
 import {
   Card,
   CardContent,
@@ -40,13 +41,11 @@ export default function SettingsBusinessPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold">사업자 정보</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          법인 정보를 관리합니다. 변경 후 재인증이 필요할 수 있습니다.
-        </p>
-      </div>
+    <div className="max-w-2xl space-y-6">
+      <PageHeader
+        title="사업자 정보"
+        description="법인 정보를 관리합니다. 변경 후 재인증이 필요할 수 있습니다."
+      />
 
       <Card>
         <CardHeader>

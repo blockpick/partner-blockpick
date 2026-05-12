@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Bell, Slack, Mail, MessageSquare } from "lucide-react";
+import { PageHeader } from "@/components/dashboard/page-header";
 import {
   Card,
   CardContent,
@@ -119,13 +120,11 @@ export default function SettingsNotificationsPage() {
   }
 
   return (
-    <div className="space-y-6 max-w-2xl">
-      <div>
-        <h1 className="text-2xl font-bold">알림 설정</h1>
-        <p className="text-sm text-muted-foreground mt-1">
-          수신할 알림 종류와 채널을 설정합니다.
-        </p>
-      </div>
+    <div className="max-w-2xl space-y-6">
+      <PageHeader
+        title="알림 설정"
+        description="수신할 알림 종류와 채널을 설정합니다."
+      />
 
       {isLoading ? (
         <div className="space-y-4">

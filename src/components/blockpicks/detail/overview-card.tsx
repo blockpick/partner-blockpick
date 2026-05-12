@@ -1,7 +1,7 @@
 "use client";
 
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Badge } from "@/components/ui/badge";
+import { BlockpickStatusBadge } from "@/components/blockpicks/blockpick-status-badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { format } from "date-fns";
 import { ko } from "date-fns/locale";
@@ -10,27 +10,10 @@ import {
   Eye,
   Gift,
   Grid3X3,
-  Calendar,
   ExternalLink,
   TrendingUp,
 } from "lucide-react";
-import type { Blockpick, BlockpickStatus } from "@/lib/types/blockpick";
-
-const STATUS_CLASS: Record<BlockpickStatus, string> = {
-  ACTIVE: "bg-green-100 text-green-700 border-green-200",
-  SCHEDULED: "bg-blue-100 text-blue-700 border-blue-200",
-  DRAFT: "bg-gray-100 text-gray-600 border-gray-200",
-  ENDED: "bg-orange-100 text-orange-700 border-orange-200",
-  CANCELLED: "bg-red-100 text-red-700 border-red-200",
-};
-
-const STATUS_LABEL: Record<BlockpickStatus, string> = {
-  ACTIVE: "진행중",
-  SCHEDULED: "예약됨",
-  DRAFT: "임시저장",
-  ENDED: "종료됨",
-  CANCELLED: "취소됨",
-};
+import type { Blockpick } from "@/lib/types/blockpick";
 
 const REWARD_TYPE_LABEL: Record<string, string> = {
   COUPON: "쿠폰",
@@ -88,27 +71,27 @@ export function OverviewCard({ blockpick, isLoading }: OverviewCardProps) {
   return (
     <div className="space-y-6">
       {/* KPI 카드 */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-2 gap-4 md:grid-cols-4">
         <KpiCard
-          icon={<Users className="h-5 w-5 text-blue-500" />}
+          icon={<Users className="h-4 w-4 text-muted-foreground" />}
           label="총 참여자"
           value={blockpick.totalParticipants.toLocaleString()}
           unit="명"
         />
         <KpiCard
-          icon={<Eye className="h-5 w-5 text-purple-500" />}
+          icon={<Eye className="h-4 w-4 text-muted-foreground" />}
           label="총 방문"
           value={blockpick.totalVisits.toLocaleString()}
           unit="회"
         />
         <KpiCard
-          icon={<TrendingUp className="h-5 w-5 text-green-500" />}
+          icon={<TrendingUp className="h-4 w-4 text-muted-foreground" />}
           label="전환율"
           value={conversionRate}
           unit="%"
         />
         <KpiCard
-          icon={<Gift className="h-5 w-5 text-orange-500" />}
+          icon={<Gift className="h-4 w-4 text-muted-foreground" />}
           label="경품 수량"
           value={(blockpick.rewardQuantity ?? 0).toLocaleString()}
           unit="개"
@@ -120,9 +103,7 @@ export function OverviewCard({ blockpick, isLoading }: OverviewCardProps) {
         <CardHeader className="pb-3">
           <div className="flex items-center justify-between">
             <CardTitle className="text-base">기본 정보</CardTitle>
-            <Badge className={STATUS_CLASS[blockpick.status]}>
-              {STATUS_LABEL[blockpick.status]}
-            </Badge>
+            <BlockpickStatusBadge status={blockpick.status} />
           </div>
         </CardHeader>
         <CardContent className="space-y-4">

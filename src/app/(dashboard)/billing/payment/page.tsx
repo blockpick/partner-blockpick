@@ -1,8 +1,10 @@
 "use client";
 
 import { useState } from "react";
-import { format } from "date-fns";
-import { ko } from "date-fns/locale";
+import { CreditCard, Plus } from "lucide-react";
+import { PageHeader } from "@/components/dashboard/page-header";
+import { EmptyState } from "@/components/dashboard/empty-state";
+import { Button } from "@/components/ui/button";
 import {
   Card,
   CardContent,
@@ -10,174 +12,123 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Skeleton } from "@/components/ui/skeleton";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import {
-  Dialog,
-  DialogContent,
-  DialogDescription,
-  DialogFooter,
-  DialogHeader,
-  DialogTitle,
-} from "@/components/ui/dialog";
-import {
+  useAddPaymentMethod,
   usePaymentMethods,
-  useSetDefaultPaymentMethod,
   useRemovePaymentMethod,
+  useSetDefaultPaymentMethod,
 } from "@/lib/hooks/use-subscription";
 import { CARD_BRAND_LABELS } from "@/lib/types/payment-method";
-import { CreditCard, Plus, Star, Trash2 } from "lucide-react";
 
 export default function BillingPaymentPage() {
-  const { data: methods, isLoading } = usePaymentMethods();
-  const setDefault = useSetDefaultPaymentMethod();
+  const { data, isLoading } = usePaymentMethods();
+  const add = useAddPaymentMethod();
   const remove = useRemovePaymentMethod();
+  const setDefault = useSetDefaultPaymentMethod();
+  const [token, setToken] = useState("");
 
-  const [addDialogOpen, setAddDialogOpen] = useState(false);
-  const [removeTarget, setRemoveTarget] = useState<string | null>(null);
-
-  if (isLoading) {
-    return (
-      <div className="space-y-6">
-        <div>
-          <Skeleton className="h-8 w-32" />
-          <Skeleton className="mt-1 h-4 w-56" />
-        </div>
-        <Skeleton className="h-40 w-full" />
-      </div>
-    );
-  }
+  const methods = data ?? [];
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">결제 수단</h1>
-          <p className="text-sm text-muted-foreground">등록된 카드를 관리합니다</p>
-        </div>
-        <Button onClick={() => setAddDialogOpen(true)}>
-          <Plus className="mr-1.5 h-4 w-4" />
-          카드 추가
-        </Button>
-      </div>
+      <PageHeader
+        title="결제수단"
+        description="결제 카드와 기본 결제수단을 관리합니다."
+      />
 
       <Card>
         <CardHeader>
-          <CardTitle>등록된 카드</CardTitle>
-          <CardDescription>기본 카드로 구독 요금이 자동 청구됩니다</CardDescription>
+          <CardDescription>새 카드 등록</CardDescription>
+          <CardTitle className="text-base">결제수단 추가</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-3">
-          {!methods || methods.length === 0 ? (
-            <div className="flex flex-col items-center gap-2 py-10 text-muted-foreground">
-              <CreditCard className="h-10 w-10" />
-              <p className="text-sm">등록된 카드가 없습니다</p>
-              <Button variant="outline" size="sm" onClick={() => setAddDialogOpen(true)}>
-                카드 추가하기
-              </Button>
+        <CardContent>
+          <form
+            className="flex flex-col gap-2 sm:flex-row sm:items-end"
+            onSubmit={async (e) => {
+              e.preventDefault();
+              if (!token.trim()) return;
+              await add.mutateAsync(token);
+              setToken("");
+            }}
+          >
+            <div className="flex-1 space-y-1.5">
+              <Label htmlFor="payment-token">결제 토큰</Label>
+              <Input
+                id="payment-token"
+                value={token}
+                onChange={(e) => setToken(e.target.value)}
+                placeholder="PG에서 발급받은 결제 토큰을 입력하세요"
+              />
             </div>
-          ) : (
-            methods.map((method) => (
-              <div
-                key={method.id}
-                className="flex items-center justify-between rounded-lg border p-4"
-              >
-                <div className="flex items-center gap-3">
-                  <CreditCard className="h-5 w-5 text-muted-foreground" />
-                  <div>
-                    <div className="flex items-center gap-2">
-                      <span className="font-medium">
-                        {CARD_BRAND_LABELS[method.brand]} ···· {method.last4}
-                      </span>
-                      {method.isDefault && (
-                        <Badge variant="secondary" className="text-xs">
-                          기본
-                        </Badge>
-                      )}
-                    </div>
-                    <p className="text-xs text-muted-foreground">
-                      {method.holderName} · 만료 {method.expMonth.toString().padStart(2, "0")}/
-                      {method.expYear} · 등록일{" "}
-                      {format(new Date(method.createdAt), "yyyy.M.d", { locale: ko })}
-                    </p>
-                  </div>
-                </div>
-                <div className="flex items-center gap-2">
-                  {!method.isDefault && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      disabled={setDefault.isPending}
-                      onClick={() => setDefault.mutate(method.id)}
-                    >
-                      <Star className="mr-1 h-3.5 w-3.5" />
-                      기본으로 설정
-                    </Button>
-                  )}
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    className="text-destructive hover:text-destructive"
-                    onClick={() => setRemoveTarget(method.id)}
-                  >
-                    <Trash2 className="h-3.5 w-3.5" />
-                  </Button>
-                </div>
-              </div>
-            ))
-          )}
+            <Button
+              type="submit"
+              disabled={!token.trim() || add.isPending}
+              className="gap-1.5"
+            >
+              <Plus className="h-4 w-4" />
+              {add.isPending ? "추가 중..." : "카드 등록"}
+            </Button>
+          </form>
         </CardContent>
       </Card>
 
-      {/* 카드 추가 다이얼로그 (PG 연동 placeholder) */}
-      <Dialog open={addDialogOpen} onOpenChange={setAddDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>카드 추가</DialogTitle>
-            <DialogDescription>
-              결제 카드 정보를 입력합니다. PG사 연동 후 실제 결제창이 표시됩니다.
-            </DialogDescription>
-          </DialogHeader>
-          <div className="rounded-lg border border-dashed p-8 text-center text-sm text-muted-foreground">
-            <CreditCard className="mx-auto mb-2 h-8 w-8" />
-            <p>Toss Payments / Stripe 결제창</p>
-            <p className="mt-1 text-xs">PG 사업자 선정 후 연동 예정</p>
-          </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setAddDialogOpen(false)}>
-              닫기
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
-
-      {/* 카드 삭제 확인 다이얼로그 */}
-      <Dialog open={!!removeTarget} onOpenChange={() => setRemoveTarget(null)}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>카드를 삭제하시겠습니까?</DialogTitle>
-            <DialogDescription>
-              삭제한 카드는 복구할 수 없습니다. 기본 결제 카드는 삭제할 수 없습니다.
-            </DialogDescription>
-          </DialogHeader>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setRemoveTarget(null)}>
-              취소
-            </Button>
-            <Button
-              variant="destructive"
-              disabled={remove.isPending}
-              onClick={() => {
-                if (removeTarget) {
-                  remove.mutate(removeTarget, { onSuccess: () => setRemoveTarget(null) });
-                }
-              }}
-            >
-              {remove.isPending ? "삭제 중..." : "삭제"}
-            </Button>
-          </DialogFooter>
-        </DialogContent>
-      </Dialog>
+      {isLoading ? null : !methods.length ? (
+        <EmptyState
+          title="등록된 결제수단이 없어요"
+          description="구독을 유지하려면 결제수단을 먼저 등록해주세요."
+        />
+      ) : (
+        <div className="space-y-3">
+          {methods.map((method) => (
+            <Card key={method.id}>
+              <CardContent className="flex flex-col gap-3 pt-4 sm:flex-row sm:items-center sm:justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="flex h-10 w-14 items-center justify-center rounded-md border border-border bg-muted/40">
+                    <CreditCard className="h-4 w-4 text-muted-foreground" />
+                  </div>
+                  <div className="space-y-0.5">
+                    <div className="flex items-center gap-2">
+                      <p className="font-medium">
+                        {CARD_BRAND_LABELS[method.brand]} •••• {method.last4}
+                      </p>
+                      {method.isDefault && (
+                        <Badge variant="success">기본</Badge>
+                      )}
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      {method.holderName} · 만료{" "}
+                      {String(method.expMonth).padStart(2, "0")}/{method.expYear}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex gap-2">
+                  {!method.isDefault && (
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => setDefault.mutate(method.id)}
+                      disabled={setDefault.isPending}
+                    >
+                      기본 설정
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => remove.mutate(method.id)}
+                    disabled={remove.isPending}
+                  >
+                    삭제
+                  </Button>
+                </div>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      )}
     </div>
   );
 }

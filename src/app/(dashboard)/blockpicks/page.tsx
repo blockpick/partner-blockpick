@@ -5,9 +5,11 @@ import { useSearchParams, useRouter } from "next/navigation";
 import { Suspense, useState } from "react";
 import { useMyBlockpicks } from "@/lib/hooks/use-my-blockpicks";
 import { BlockpicksTable } from "@/components/blockpicks/list/blockpicks-table";
+import { PageHeader } from "@/components/dashboard/page-header";
 import { Button } from "@/components/ui/button";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Plus } from "lucide-react";
+import { cn } from "@/lib/utils";
 import type { BlockpickStatus } from "@/lib/types/blockpick";
 
 const TAB_FILTERS: { label: string; value?: BlockpickStatus }[] = [
@@ -34,53 +36,54 @@ function BlockpickListContent() {
   });
 
   return (
-    <div className="space-y-6">
-      {/* 헤더 */}
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">블록픽</h1>
-          <p className="text-sm text-muted-foreground mt-0.5">
-            캠페인을 생성하고 관리하세요
-          </p>
+    <div className="space-y-5">
+      <PageHeader
+        title="블록픽"
+        description="캠페인을 생성하고 관리합니다."
+        actions={
+          <Link href="/blockpicks/new">
+            <Button size="sm" className="gap-1.5">
+              <Plus className="h-4 w-4" />새 블록픽 만들기
+            </Button>
+          </Link>
+        }
+      />
+
+      <nav className="border-b border-border">
+        <div className="-mb-px flex gap-1 overflow-x-auto">
+          {TAB_FILTERS.map((tab) => {
+            const isActive =
+              (tab.value === undefined && !statusParam) ||
+              statusParam === tab.value;
+            return (
+              <button
+                key={tab.label}
+                type="button"
+                onClick={() => {
+                  setPage(1);
+                  if (tab.value) {
+                    router.push(`/blockpicks?status=${tab.value}`);
+                  } else {
+                    router.push("/blockpicks");
+                  }
+                }}
+                className={cn(
+                  "relative px-3 py-2.5 text-sm transition-colors",
+                  isActive
+                    ? "font-medium text-foreground"
+                    : "text-muted-foreground hover:text-foreground"
+                )}
+              >
+                {tab.label}
+                {isActive && (
+                  <span className="absolute inset-x-0 -bottom-px h-0.5 bg-foreground" />
+                )}
+              </button>
+            );
+          })}
         </div>
-        <Link href="/blockpicks/new">
-          <Button size="sm" className="gap-1.5">
-            <Plus className="h-4 w-4" />
-            새 블록픽 만들기
-          </Button>
-        </Link>
-      </div>
+      </nav>
 
-      {/* 상태 탭 */}
-      <div className="flex gap-0 border-b">
-        {TAB_FILTERS.map((tab) => {
-          const isActive =
-            (tab.value === undefined && !statusParam) ||
-            statusParam === tab.value;
-          return (
-            <button
-              key={tab.label}
-              onClick={() => {
-                setPage(1);
-                if (tab.value) {
-                  router.push(`/blockpicks?status=${tab.value}`);
-                } else {
-                  router.push("/blockpicks");
-                }
-              }}
-              className={`px-4 py-2.5 text-sm font-medium border-b-2 -mb-px transition-colors ${
-                isActive
-                  ? "border-primary text-foreground"
-                  : "border-transparent text-muted-foreground hover:text-foreground"
-              }`}
-            >
-              {tab.label}
-            </button>
-          );
-        })}
-      </div>
-
-      {/* 테이블 */}
       <BlockpicksTable
         items={data?.items ?? []}
         total={data?.total ?? 0}
